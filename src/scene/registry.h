@@ -119,12 +119,12 @@ public:
 	/**
 	 * Assigns specified component to the entity
 	 */
-	template <typename T, typename... TArgs> T* assign(Entity entity, TArgs&&... args);
+	template <typename T> T* assign(Entity entity);
 
 	/**
-	 * Assigns specified components to the entity
+	 * Assigns given components to the entity
 	 */
-	template <typename... TComponents> std::tuple<TComponents*...> assign(Entity entity);
+	template <typename... TComponents> std::tuple<TComponents*...> assign_many(Entity entity);
 
 	/**
 	 * Remove specified component from the entity
@@ -143,7 +143,7 @@ public:
 	/**
 	 * Get specified components from the entity
 	 */
-	template <typename... TComponents> std::tuple<TComponents*...> get(Entity entity);
+	template <typename... TComponents> std::tuple<TComponents*...> get_many(Entity entity);
 
 	/**
 	 * Find out wether an entity has the specified components
@@ -173,3 +173,5 @@ private:
 };
 
 } //namespace gl
+
+#include "scene/registry.inl"

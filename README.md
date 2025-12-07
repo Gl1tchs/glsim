@@ -23,5 +23,5 @@ cmake --build --preset build-debug
 
 ```bash
 export PYTHONPATH=$PYTHONPATH:/path/to/glsim # for debug builds
-python tests/test_engine.py
+python tests/test_all.py
 ```

@@ -1,28 +1,10 @@
 from typing import Union
 
+import numpy as np
+
 # Define the C++ primitive type used for entities
 # Union[int, Entity] is used to allow Python to pass regular ints
 EntityID = Union[int, "Entity"]
-
-
-class Engine:
-    """
-    The low-level C++ simulation engine interface.
-    """
-
-    def __init__(self) -> None:
-        """
-        Initializes the C++ core engine components, including memory pools
-        and graphics contexts (if applicable).
-        """
-        ...
-
-    def say_hello(self) -> None:
-        ...
-
-    # --- Example methods based on previous context ---
-    # def step(self, dt: float) -> None: ...
-    # def get_sensor_buffer(self) -> memoryview: ...
 
 
 class Entity:
@@ -113,5 +95,26 @@ class Registry:
 
         Args:
             entity: The 64-bit Entity ID to be destroyed.
+        """
+        ...
+
+    def get_position(self, entity: EntityID) -> np.ndarray: ...
+    def assign_position(self, entity: EntityID,
+                        position: np.ndarray) -> None: ...
+
+    def get_velocity(self, entity: EntityID) -> np.ndarray: ...
+    def assign_velocity(self, entity: EntityID,
+                        velocity: np.ndarray) -> None: ...
+
+
+class PhysicsSystem:
+    @staticmethod
+    def update(registry: Registry, dt: float) -> None:
+        """
+        Updates the physics loop
+
+        Args:
+            registry: Registry to loop on
+            dt: Delta time step
         """
         ...

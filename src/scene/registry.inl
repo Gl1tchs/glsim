@@ -4,7 +4,7 @@
 
 namespace gl {
 
-template <typename T, typename... TArgs> T* Registry::assign(Entity entity, TArgs&&... args) {
+template <typename T> T* Registry::assign(Entity entity) {
 	if (!is_valid(entity)) {
 		return nullptr;
 	}
@@ -33,15 +33,15 @@ template <typename T, typename... TArgs> T* Registry::assign(Entity entity, TArg
 				_component_pools[component_id]->get(get_entity_index(entity)));
 	}
 
-	T* component = new (_component_pools[component_id]->get(get_entity_index(entity)))
-			T(std::forward<TArgs>(args)...);
+	T* component = new (_component_pools[component_id]->get(get_entity_index(entity))) T();
 
 	_entities[get_entity_index(entity)].mask.set(component_id);
 
 	return component;
 }
 
-template <typename... TComponents> std::tuple<TComponents*...> Registry::assign(Entity entity) {
+template <typename... TComponents>
+std::tuple<TComponents*...> Registry::assign_many(Entity entity) {
 	if (!is_valid(entity)) {
 		return std::make_tuple(static_cast<TComponents*>(nullptr)...);
 	}
@@ -89,7 +89,7 @@ template <typename T> T* Registry::get(Entity entity) {
 	return component;
 }
 
-template <typename... TComponents> std::tuple<TComponents*...> Registry::get(Entity entity) {
+template <typename... TComponents> std::tuple<TComponents*...> Registry::get_many(Entity entity) {
 	if (!is_valid(entity)) {
 		return std::make_tuple(static_cast<TComponents*>(nullptr)...);
 	}
