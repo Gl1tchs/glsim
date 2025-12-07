@@ -6,7 +6,10 @@ namespace gl {
 
 class PhysicsSystem {
 public:
-	static void update(Registry& registry, float dt);
+	static void init();
+	static void shutdown();
+
+	static void update(Registry& registry);
 };
 
 } //namespace gl

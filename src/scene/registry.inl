@@ -66,7 +66,7 @@ template <typename T> void Registry::remove(Entity entity) {
 	}
 }
 
-template <typename... TComponents> void Registry::remove(Entity entity) {
+template <typename... TComponents> void Registry::remove_many(Entity entity) {
 	if (!is_valid(entity)) {
 		return;
 	}

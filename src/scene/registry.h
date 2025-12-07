@@ -134,7 +134,7 @@ public:
 	/**
 	 * Remove specified components from the entity
 	 */
-	template <typename... TComponents> void remove(Entity entity);
+	template <typename... TComponents> void remove_many(Entity entity);
 
 	/**
 	 * Get specified component from the entity

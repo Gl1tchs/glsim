@@ -109,7 +109,13 @@ class Registry:
 
 class PhysicsSystem:
     @staticmethod
-    def update(registry: Registry, dt: float) -> None:
+    def init() -> None: ...
+
+    @staticmethod
+    def shutdown() -> None: ...
+
+    @staticmethod
+    def update(registry: Registry) -> None:
         """
         Updates the physics loop
 

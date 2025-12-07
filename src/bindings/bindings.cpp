@@ -90,5 +90,8 @@ PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 				v->z = ((float*)buf.ptr)[2];
 			});
 
-	py::class_<PhysicsSystem>(m, "PhysicsSystem").def_static("update", &PhysicsSystem::update);
+	py::class_<PhysicsSystem>(m, "PhysicsSystem")
+			.def_static("init", &PhysicsSystem::init)
+			.def_static("shutdown", &PhysicsSystem::init)
+			.def_static("update", &PhysicsSystem::update);
 }
