@@ -1,13 +1,34 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
+#include "graphics/rendering_system.h"
 #include "physics/physics_system.h"
-#include "physics/rigidbody.h"
 #include "scene/registry.h"
+#include "scene/system.h"
+#include "scene/world.h"
+
+namespace gl {
 
 namespace py = pybind11;
 
-using namespace gl;
+// Trampoline class for System
+// This allows Python classes to inherit from System and override virtual methods.
+class PySystem : public System, public py::trampoline_self_life_support {
+public:
+	using System::System;
+
+	void on_init(Registry& p_registry) override {
+		PYBIND11_OVERRIDE(void, System, on_init, p_registry);
+	}
+
+	void on_update(Registry& p_registry, float p_dt) override {
+		PYBIND11_OVERRIDE(void, System, on_update, p_registry, p_dt);
+	}
+
+	void on_destroy(Registry& p_registry) override {
+		PYBIND11_OVERRIDE(void, System, on_destroy, p_registry);
+	}
+};
 
 PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 	py::class_<Entity>(m, "Entity")
@@ -24,74 +45,24 @@ PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 			.def("clear", &Registry::clear)
 			.def("spawn", &Registry::spawn)
 			.def("is_valid", &Registry::is_valid)
-			.def("despawn", &Registry::despawn)
-			// Temporary methods
-			.def(
-					"get_position",
-					[](Registry& self, Entity entity) {
-						Position* pos = self.get<Position>(entity);
-						if (!pos) {
-							throw std::runtime_error("Position component does not exists.");
-						}
+			.def("despawn", &Registry::despawn);
 
-						float* ptr = &(pos->x);
-						py::capsule free_when_done(
-								ptr, [](void* f) { /* Do nothing - Registry owns the memory */ });
-						return py::array_t<float>({ 3 }, // Shape: 3 elements
-								{ sizeof(
-										float) }, // Strides: distance between elements (contiguous)
-								ptr, // Pointer to the data (starting at pos->x)
-								free_when_done // Capsule (ensures ownership/lifetime is safe)
-						);
-					},
-					py::return_value_policy::reference_internal)
-			.def("assign_position",
-					[](Registry& self, Entity entity, py::array_t<float> position) {
-						py::buffer_info buf = position.request();
+	py::class_<System, PySystem, py::smart_holder>(m, "System")
+			.def(py::init<>())
+			.def("on_init", &System::on_init)
+			.def("on_update", &System::on_update)
+			.def("on_destroy", &System::on_destroy);
 
-						if (buf.size != 3) {
-							throw std::runtime_error("Number of dimensions must be 3");
-						}
+	// Expose C++ systems
+	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem").def(py::init<>());
+	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem").def(py::init<>());
 
-						Position* p = self.assign<Position>(entity);
-						p->x = ((float*)buf.ptr)[0];
-						p->y = ((float*)buf.ptr)[1];
-						p->z = ((float*)buf.ptr)[2];
-					})
-			.def(
-					"get_velocity",
-					[](Registry& self, Entity entity) {
-						Velocity* vel = self.get<Velocity>(entity);
-						if (!vel) {
-							throw std::runtime_error("Position component does not exists.");
-						}
-
-						float* ptr = &(vel->x);
-						py::capsule free_when_done(
-								ptr, [](void* f) { /* Do nothing - Registry owns the memory */ });
-						return py::array_t<float>({ 3 }, // Shape: 3 elements
-								{ sizeof(
-										float) }, // Strides: distance between elements (contiguous)
-								ptr, // Pointer to the data (starting at pos->x)
-								free_when_done // Capsule (ensures ownership/lifetime is safe)
-						);
-					},
-					py::return_value_policy::reference_internal)
-			.def("assign_velocity", [](Registry& self, Entity entity, py::array_t<float> velocity) {
-				py::buffer_info buf = velocity.request();
-
-				if (buf.size != 3) {
-					throw std::runtime_error("Number of dimensions must be 3");
-				}
-
-				Velocity* v = self.assign<Velocity>(entity);
-				v->x = ((float*)buf.ptr)[0];
-				v->y = ((float*)buf.ptr)[1];
-				v->z = ((float*)buf.ptr)[2];
-			});
-
-	py::class_<PhysicsSystem>(m, "PhysicsSystem")
-			.def_static("init", &PhysicsSystem::init)
-			.def_static("shutdown", &PhysicsSystem::init)
-			.def_static("update", &PhysicsSystem::update);
+	// Expose the world
+	py::class_<World, Registry>(m, "World")
+			.def(py::init<>())
+			// Bind update method
+			.def("update", &World::update, py::arg("p_dt") = 0.016f)
+			.def("add_system", &World::add_system);
 }
+
+} //namespace gl

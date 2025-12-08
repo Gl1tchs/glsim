@@ -4,9 +4,9 @@
 
 namespace gl {
 
-class PhysicsSystem : public System {
+class RenderingSystem : public System {
 public:
-	virtual ~PhysicsSystem() = default;
+	virtual ~RenderingSystem() = default;
 
 	void on_init(Registry& p_registry) override;
 	void on_update(Registry& p_registry, float p_dt) override;

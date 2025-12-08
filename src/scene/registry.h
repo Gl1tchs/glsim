@@ -18,18 +18,18 @@ struct EntityDescriptor {
 
 typedef std::vector<EntityDescriptor> EntityContainer;
 
-constexpr inline Entity create_entity_id(uint32_t index, uint32_t version) {
-	return ((Entity)index << 32) | version;
+constexpr inline Entity create_entity_id(uint32_t p_index, uint32_t p_version) {
+	return ((Entity)p_index << 32) | p_version;
 }
 
-constexpr inline uint32_t get_entity_index(Entity entity) { return entity >> 32; }
+constexpr inline uint32_t get_entity_index(Entity p_entity) { return p_entity >> 32; }
 
-constexpr inline uint32_t get_entity_version(Entity entity) {
+constexpr inline uint32_t get_entity_version(Entity p_entity) {
 	// this conversation will loose the top 32 bits
-	return (uint32_t)entity;
+	return (uint32_t)p_entity;
 }
 
-constexpr inline bool is_entity_valid(Entity entity) { return (entity >> 32) != UINT32_MAX; }
+constexpr inline bool is_entity_valid(Entity p_entity) { return (p_entity >> 32) != UINT32_MAX; }
 
 inline uint32_t s_component_counter = 0;
 
@@ -43,40 +43,40 @@ inline constexpr Entity INVALID_ENTITY_ID = create_entity_id(UINT32_MAX, 0);
 
 class ComponentPool {
 public:
-	ComponentPool(size_t _element_size);
+	ComponentPool(size_t p_element_size);
 	~ComponentPool();
 
-	void* get(size_t index);
+	void* get(size_t p_index);
 
 private:
-	uint8_t* _data = nullptr;
-	size_t _element_size = 0;
+	uint8_t* data = nullptr;
+	size_t lement_size = 0;
 };
 
 template <typename... TComponents> class SceneView {
 public:
-	SceneView(EntityContainer* entities);
+	SceneView(EntityContainer* p_entities);
 
 	class Iterator {
 	public:
-		Iterator(EntityContainer* entities, uint32_t index, ComponentMask mask, bool all);
+		Iterator(EntityContainer* p_entities, uint32_t p_index, ComponentMask p_mask, bool p_all);
 
 		Entity operator*() const;
 
-		bool operator==(const Iterator& other) const;
+		bool operator==(const Iterator& p_other) const;
 
-		bool operator!=(const Iterator& other) const;
+		bool operator!=(const Iterator& p_other) const;
 
 		Iterator operator++();
 
 	private:
-		bool is_index_valid();
+		bool _is_index_valid();
 
 	private:
-		EntityContainer* _entities;
-		uint32_t _index;
-		ComponentMask _mask;
-		bool _all = false;
+		EntityContainer* entities;
+		uint32_t index;
+		ComponentMask mask;
+		bool all = false;
 	};
 
 	const Iterator begin() const;
@@ -84,9 +84,9 @@ public:
 	const Iterator end() const;
 
 private:
-	EntityContainer* _entities = nullptr;
-	ComponentMask _component_mask;
-	bool _all = false;
+	EntityContainer* entities = nullptr;
+	ComponentMask component_mask;
+	bool all = false;
 };
 
 /**
@@ -98,7 +98,7 @@ public:
 
 	void clear();
 
-	void copy_to(Registry& dest);
+	void copy_to(Registry& p_dest);
 
 	/**
 	 * Create new entity instance on the scene
@@ -108,33 +108,33 @@ public:
 	/**
 	 * Find out wether the entity is valid or not
 	 */
-	bool is_valid(Entity entity);
+	bool is_valid(Entity p_entity);
 
 	/**
 	 * Removes entity from the scene and increments
 	 * version
 	 */
-	void despawn(Entity entity);
+	void despawn(Entity p_entity);
 
 	/**
 	 * Assigns specified component to the entity
 	 */
-	template <typename T> T* assign(Entity entity);
+	template <typename T> T* assign(Entity p_entity);
 
 	/**
 	 * Assigns given components to the entity
 	 */
-	template <typename... TComponents> std::tuple<TComponents*...> assign_many(Entity entity);
+	template <typename... TComponents> std::tuple<TComponents*...> assign_many(Entity p_entity);
 
 	/**
 	 * Remove specified component from the entity
 	 */
-	template <typename T> void remove(Entity entity);
+	template <typename T> void remove(Entity p_entity);
 
 	/**
 	 * Remove specified components from the entity
 	 */
-	template <typename... TComponents> void remove_many(Entity entity);
+	template <typename... TComponents> void remove_many(Entity p_entity);
 
 	/**
 	 * Get specified component from the entity
@@ -143,12 +143,12 @@ public:
 	/**
 	 * Get specified components from the entity
 	 */
-	template <typename... TComponents> std::tuple<TComponents*...> get_many(Entity entity);
+	template <typename... TComponents> std::tuple<TComponents*...> get_many(Entity p_entity);
 
 	/**
 	 * Find out wether an entity has the specified components
 	 */
-	template <typename... TComponents> bool has(Entity entity);
+	template <typename... TComponents> bool has(Entity p_entity);
 
 	/**
 	 * Get entities with specified components,
@@ -164,12 +164,12 @@ private:
 		void (*destroy_fn)(void*) = nullptr;
 	};
 
-	uint32_t _entity_counter = 0;
-	EntityContainer _entities;
-	std::queue<Entity> _free_indices;
-	std::vector<ComponentPool*> _component_pools;
+	uint32_t entity_counter = 0;
+	EntityContainer entities;
+	std::queue<Entity> free_indices;
+	std::vector<ComponentPool*> component_pools;
 	// parallel vector to component_pools for component destruction logic
-	std::vector<PoolHelpers> _pool_helpers;
+	std::vector<PoolHelpers> pool_helpers;
 };
 
 } //namespace gl
