@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-__version__ = "0.1.0"
+from ._glsim import (
+    Entity,
+    Registry,
+    System,
+    PhysicsSystem,
+    RenderingSystem,
+    World
+)
 
-from ._glsim import __doc__, Entity, Registry, System, PhysicsSystem, RenderingSystem, World
+__version__ = "0.1.0"
+__doc__ = "High performance simulation engine."
 
 __all__ = [
     "__doc__",

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene/system.h"
+#include "core/system.h"
 
 namespace gl {
 

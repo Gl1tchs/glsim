@@ -44,13 +44,19 @@ inline constexpr Entity INVALID_ENTITY_ID = create_entity_id(UINT32_MAX, 0);
 class ComponentPool {
 public:
 	ComponentPool(size_t p_element_size);
-	~ComponentPool();
+	~ComponentPool() = default;
+
+	size_t get_component_count() const;
+
+	size_t get_size() const;
 
 	void* get(size_t p_index);
 
+	void* add(void* p_data);
+
 private:
-	uint8_t* data = nullptr;
-	size_t lement_size = 0;
+	std::vector<uint8_t> data;
+	size_t element_size = 0;
 };
 
 template <typename... TComponents> class SceneView {
@@ -94,7 +100,7 @@ private:
  */
 class Registry {
 public:
-	~Registry();
+	virtual ~Registry();
 
 	void clear();
 
@@ -117,6 +123,16 @@ public:
 	void despawn(Entity p_entity);
 
 	/**
+	 * Sets component mask of the p_component_id
+	 *
+	 */
+	bool assign_id(Entity p_entity, uint32_t p_component_id);
+
+	bool remove(Entity p_entity, uint32_t p_component_id);
+
+	bool has(Entity p_entity, uint32_t p_component_id);
+
+	/**
 	 * Assigns specified component to the entity
 	 */
 	template <typename T> T* assign(Entity p_entity);
@@ -129,7 +145,7 @@ public:
 	/**
 	 * Remove specified component from the entity
 	 */
-	template <typename T> void remove(Entity p_entity);
+	template <typename T> bool remove(Entity p_entity);
 
 	/**
 	 * Remove specified components from the entity
@@ -140,6 +156,7 @@ public:
 	 * Get specified component from the entity
 	 */
 	template <typename T> T* get(Entity entity);
+
 	/**
 	 * Get specified components from the entity
 	 */
@@ -158,20 +175,12 @@ public:
 	template <typename... TComponents> SceneView<TComponents...> view();
 
 private:
-	struct PoolHelpers {
-		size_t element_size = 0;
-		void (*copy_fn)(void*, const void*) = nullptr;
-		void (*destroy_fn)(void*) = nullptr;
-	};
-
 	uint32_t entity_counter = 0;
 	EntityContainer entities;
 	std::queue<Entity> free_indices;
 	std::vector<ComponentPool*> component_pools;
-	// parallel vector to component_pools for component destruction logic
-	std::vector<PoolHelpers> pool_helpers;
 };
 
 } //namespace gl
 
-#include "scene/registry.inl"
+#include "core/registry.inl"

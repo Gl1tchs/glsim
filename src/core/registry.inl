@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene/registry.h"
+#include "core/registry.h"
 
 namespace gl {
 
@@ -13,24 +13,10 @@ template <typename T> T* Registry::assign(Entity p_entity) {
 
 	if (component_pools.size() <= component_id) {
 		component_pools.resize(component_id + 1, nullptr);
-		pool_helpers.resize(component_id + 1);
-	}
-	if (component_pools[component_id] == nullptr) {
-		component_pools[component_id] = new ComponentPool(sizeof(T));
-		pool_helpers[component_id] = PoolHelpers{
-			.element_size = sizeof(T),
-			// Copy function (uses placement new + copy constructor)
-			.copy_fn = [](void* dest,
-							   const void* src) { new (dest) T(*static_cast<const T*>(src)); },
-			// Destroy function (calls destructor)
-			.destroy_fn = [](void* data) { static_cast<T*>(data)->~T(); },
-		};
 	}
 
-	// Call destructor if component already exists
-	if (entities[get_entity_index(p_entity)].mask.test(component_id)) {
-		pool_helpers[component_id].destroy_fn(
-				component_pools[component_id]->get(get_entity_index(p_entity)));
+	if (!component_pools[component_id]) {
+		component_pools[component_id] = new ComponentPool(sizeof(T));
 	}
 
 	T* component = new (component_pools[component_id]->get(get_entity_index(p_entity))) T();
@@ -40,8 +26,7 @@ template <typename T> T* Registry::assign(Entity p_entity) {
 	return component;
 }
 
-template <typename... TComponents>
-std::tuple<TComponents*...> Registry::assign_many(Entity p_entity) {
+template <typename... TComponents> std::tuple<TComponents*...> Registry::assign_many(Entity p_entity) {
 	if (!is_valid(p_entity)) {
 		return std::make_tuple(static_cast<TComponents*>(nullptr)...);
 	}
@@ -49,21 +34,14 @@ std::tuple<TComponents*...> Registry::assign_many(Entity p_entity) {
 	return std::make_tuple(assign<TComponents>(p_entity)...);
 }
 
-template <typename T> void Registry::remove(Entity p_entity) {
+template <typename T> bool Registry::remove(Entity p_entity) {
 	if (!is_valid(p_entity)) {
-		return;
+		return false;
 	}
 
 	const uint32_t component_id = get_component_id<T>();
-	const uint32_t entity_idx = get_entity_index(p_entity);
 
-	if (entities[entity_idx].mask.test(component_id)) {
-		// call component's destructor
-		if (pool_helpers.size() > component_id && pool_helpers[component_id].destroy_fn) {
-			pool_helpers[component_id].destroy_fn(component_pools[component_id]->get(entity_idx));
-		}
-		entities[entity_idx].mask.reset(component_id);
-	}
+	return remove(p_entity, component_id);
 }
 
 template <typename... TComponents> void Registry::remove_many(Entity p_entity) {

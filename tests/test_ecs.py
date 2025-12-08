@@ -1,4 +1,7 @@
-# import os
+import os
+import sys
+import unittest
+
 from glsim import World, System, RenderingSystem, PhysicsSystem
 
 
@@ -13,17 +16,24 @@ class MySystem(System):
         print("my system destroyed")
 
 
-# wait for debugger
-# print(os.getpid(), end="")
-# input()
+class TestECS(unittest.TestCase):
+    def test_ecs(self):
+        world = World()
 
-world = World()
+        world.add_system(MySystem())
+        world.add_system(RenderingSystem())
+        world.add_system(PhysicsSystem())
 
-world.add_system(MySystem())
-world.add_system(RenderingSystem())
-world.add_system(PhysicsSystem())
+        world.update()
 
-world.update()
+        # if we not delete the world MySystem::on_destroy would not get called
+        del world
 
-# if we do not delete the world MySystem::on_destroy would not get called
-del world
+
+if __name__ == "__main__":
+    if "-d" in sys.argv or "--debug" in sys.argv:
+        # wait for debugger
+        print(os.getpid(), end="")
+        input()
+
+    TestECS().test_ecs()

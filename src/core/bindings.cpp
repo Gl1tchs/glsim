@@ -1,11 +1,10 @@
-#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
+#include "core/registry.h"
+#include "core/system.h"
+#include "core/world.h"
 #include "graphics/rendering_system.h"
 #include "physics/physics_system.h"
-#include "scene/registry.h"
-#include "scene/system.h"
-#include "scene/world.h"
 
 namespace gl {
 
@@ -53,16 +52,15 @@ PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 			.def("on_update", &System::on_update)
 			.def("on_destroy", &System::on_destroy);
 
-	// Expose C++ systems
-	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem").def(py::init<>());
-	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem").def(py::init<>());
-
 	// Expose the world
 	py::class_<World, Registry>(m, "World")
 			.def(py::init<>())
 			// Bind update method
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
 			.def("add_system", &World::add_system);
+
+	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem").def(py::init<>());
+	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem").def(py::init<>());
 }
 
 } //namespace gl

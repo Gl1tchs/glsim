@@ -1,28 +1,35 @@
-#include "scene/registry.h"
+#include "core/registry.h"
 
 namespace gl {
 
-ComponentPool::ComponentPool(size_t p_element_size) : lement_size(p_element_size) {
-	data = new uint8_t[p_element_size * MAX_ENTITIES];
+ComponentPool::ComponentPool(size_t p_element_size) : element_size(p_element_size) {}
+
+size_t ComponentPool::get_component_count() const {
+	if (data.empty()) {
+		return 0;
+	}
+	return data.size() / element_size;
 }
 
-ComponentPool::~ComponentPool() { delete[] data; }
+size_t ComponentPool::get_size() const { return element_size; }
 
-void* ComponentPool::get(size_t index) { return data + index * lement_size; }
+void* ComponentPool::get(size_t index) { return data.data() + (index * element_size); }
+
+void* ComponentPool::add(void* p_data) {
+	const size_t old_byte_size = data.size();
+
+	data.resize(old_byte_size + element_size);
+
+	uint8_t* destination = data.data() + old_byte_size;
+
+	std::memcpy(destination, p_data, element_size);
+
+	return destination;
+}
 
 Registry::~Registry() { clear(); }
 
 void Registry::clear() {
-	// call component's destructor
-	for (size_t entity_idx = 0; entity_idx < entities.size(); ++entity_idx) {
-		for (size_t comp_id = 0; comp_id < component_pools.size(); ++comp_id) {
-			if (entities[entity_idx].mask.test(comp_id) && pool_helpers[comp_id].destroy_fn) {
-				// call the destructor
-				pool_helpers[comp_id].destroy_fn(component_pools[comp_id]->get(entity_idx));
-			}
-		}
-	}
-
 	// delete the pools
 	for (ComponentPool* pool : component_pools) {
 		delete pool;
@@ -30,7 +37,6 @@ void Registry::clear() {
 
 	// Clear all data
 	component_pools.clear();
-	pool_helpers.clear();
 	entities.clear();
 	free_indices = {};
 	entity_counter = 0;
@@ -46,7 +52,6 @@ void Registry::copy_to(Registry& p_dest) {
 
 	// Prepare destination pools
 	p_dest.component_pools.resize(component_pools.size(), nullptr);
-	p_dest.pool_helpers = pool_helpers;
 
 	// Iterate all pools and copy component data
 	for (size_t comp_id = 0; comp_id < component_pools.size(); comp_id++) {
@@ -54,22 +59,8 @@ void Registry::copy_to(Registry& p_dest) {
 			continue; // This component type isn't used
 		}
 
-		// Get copy function
-		auto& helper = pool_helpers[comp_id];
-
-		// Create a new, empty pool in the destination
-		p_dest.component_pools[comp_id] = new ComponentPool(helper.element_size);
-
-		// Iterate all entities and copy components
-		for (size_t entity_idx = 0; entity_idx < entities.size(); entity_idx++) {
-			// If the entity has this component, copy it
-			if (entities[entity_idx].mask.test(comp_id)) {
-				void* dest_ptr = p_dest.component_pools[comp_id]->get(entity_idx);
-				void* src_ptr = component_pools[comp_id]->get(entity_idx);
-
-				helper.copy_fn(dest_ptr, src_ptr);
-			}
-		}
+		// Copy the components
+		p_dest.component_pools[comp_id] = component_pools[comp_id];
 	}
 }
 
@@ -107,6 +98,39 @@ void Registry::despawn(Entity p_entity) {
 	entities[entity_idx].mask.reset();
 
 	free_indices.push(entity_idx);
+}
+
+bool Registry::assign_id(Entity p_entity, uint32_t p_component_id) {
+	if (!is_valid(p_entity)) {
+		return false;
+	}
+
+	entities[get_entity_index(p_entity)].mask.set(p_component_id);
+
+	return true;
+}
+
+bool Registry::remove(Entity p_entity, uint32_t p_component_id) {
+	if (!is_valid(p_entity)) {
+		return false;
+	}
+
+	const uint32_t entity_idx = get_entity_index(p_entity);
+
+	if (entities[entity_idx].mask.test(p_component_id)) {
+		// TODO: destroy the component object
+		entities[entity_idx].mask.reset(p_component_id);
+	}
+
+	return true;
+}
+
+bool Registry::has(Entity p_entity, uint32_t p_component_id) {
+	if (!is_valid(p_entity)) {
+		return false;
+	}
+
+	return entities[get_entity_index(p_entity)].mask.test(p_component_id);
 }
 
 } //namespace gl

@@ -1,6 +1,6 @@
 #include "graphics/rendering_system.h"
 
-#include "debug/log.h"
+#include "core/log.h"
 
 namespace gl {
 

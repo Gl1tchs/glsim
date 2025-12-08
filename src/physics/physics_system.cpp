@@ -1,6 +1,6 @@
 #include "physics/physics_system.h"
 
-#include "debug/log.h"
+#include "core/log.h"
 
 namespace gl {
 

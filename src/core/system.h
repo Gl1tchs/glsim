@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene/registry.h"
+#include "core/registry.h"
 
 namespace gl {
 

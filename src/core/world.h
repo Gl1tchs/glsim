@@ -1,9 +1,10 @@
 #pragma once
 
-#include "scene/registry.h"
-#include "scene/system.h"
+#include "core/registry.h"
 
 namespace gl {
+
+class System;
 
 class World : public Registry {
 public:

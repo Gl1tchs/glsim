@@ -1,15 +1,15 @@
-#include "scene/world.h"
+#include "core/world.h"
+
+#include "core/system.h"
 
 namespace gl {
 
-World::~World() {
-    cleanup();
-}
+World::~World() { cleanup(); }
 
 void World::cleanup() {
-    for (auto& system : systems) {
-        system->on_destroy(*this);
-    }
+	for (auto& system : systems) {
+		system->on_destroy(*this);
+	}
 }
 
 void World::update(float p_dt) {
