@@ -4,6 +4,7 @@
 #include "core/system.h"
 #include "glgpu/backend.h"
 #include "glgpu/types.h"
+#include "graphics/window.h"
 
 #ifndef GL_HEADLESS
 #include <SDL2/SDL.h>
@@ -13,7 +14,7 @@ namespace gl {
 
 class RenderingSystem : public System {
 public:
-	RenderingSystem(GpuContext& p_ctx);
+	RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_target);
 	virtual ~RenderingSystem() = default;
 
 	void on_init(Registry& p_registry) override;
@@ -22,22 +23,16 @@ public:
 
 private:
 	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<Window> window;
 
-	CommandQueue graphics_queue = GL_NULL_HANDLE;
-	CommandQueue present_queue = GL_NULL_HANDLE;
+	CommandQueue graphics_queue;
 
-#ifndef GL_HEADLESS
-	SDL_Window* window = nullptr;
+	CommandPool cmd_pool;
+	CommandBuffer cmd;
 
-	Swapchain swapchain = GL_NULL_HANDLE;
-
-	CommandPool cmd_pool = GL_NULL_HANDLE;
-	CommandBuffer cmd = GL_NULL_HANDLE;
-
-	Semaphore image_available_sem = GL_NULL_HANDLE;
-	Semaphore render_finished_sem = GL_NULL_HANDLE;
-	Fence frame_fence = GL_NULL_HANDLE;
-#endif
+	Semaphore image_available_sem;
+	Semaphore render_finished_sem;
+	Fence frame_fence;
 };
 
 } //namespace gl

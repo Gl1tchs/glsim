@@ -5,15 +5,6 @@ from typing import Union
 EntityID = Union[int, "Entity"]
 
 
-class GpuContext:
-    """
-    Class representing the gpu device.
-    """
-
-    def __init__(self) -> None:
-        ...
-
-
 class Entity:
     """
     Represents a unique entity identifier (ID) in the ECS registry.
@@ -145,46 +136,6 @@ class System:
         ...
 
 
-class PhysicsSystem(System):
-    """
-    A concrete System implementation responsible for updating physics component
-    like position, velocity, and applying collision detection/response.
-    """
-
-    def __init__(self, gpu: GpuContext) -> None:
-        ...
-
-    def on_init(self, registry: Registry) -> None:
-        ...
-
-    def on_update(self, registry: Registry, dt: float) -> None:
-        """Handles integration of forces and collision checks."""
-        ...
-
-    def on_destroy(self, registry: Registry) -> None:
-        ...
-
-
-class RenderingSystem(System):
-    """
-    A concrete System implementation responsible for drawing entities to the
-    screen, typically querying position and mesh/material components.
-    """
-
-    def __init__(self, gpu: GpuContext) -> None:
-        ...
-
-    def on_init(self, registry: Registry) -> None:
-        ...
-
-    def on_update(self, registry: Registry, dt: float) -> None:
-        """Handles culling, batching, and drawing of visible entities."""
-        ...
-
-    def on_destroy(self, registry: Registry) -> None:
-        ...
-
-
 class World(Registry):
     """
     The main ECS orchestration object, inheriting from Registry and managing
@@ -213,4 +164,66 @@ class World(Registry):
         Args:
             system: The System instance to add (e.g., PhysicsSystem, PySystem).
         """
+        ...
+
+
+class Vec2u:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) -> None:
+        ...
+
+
+class GpuContext:
+    """
+    Class representing the gpu device.
+    """
+
+    def __init__(self) -> None:
+        ...
+
+
+class Window:
+    def __init__(self, ctx: GpuContext, size: Vec2u, title: str) -> None:
+        ...
+
+
+class RenderingSystem(System):
+    """
+    A concrete System implementation responsible for drawing entities to the
+    screen, typically querying position and mesh/material components.
+    """
+
+    def __init__(self, gpu: GpuContext, window: Window) -> None:
+        ...
+
+    def on_init(self, registry: Registry) -> None:
+        ...
+
+    def on_update(self, registry: Registry, dt: float) -> None:
+        """Handles culling, batching, and drawing of visible entities."""
+        ...
+
+    def on_destroy(self, registry: Registry) -> None:
+        ...
+
+
+class PhysicsSystem(System):
+    """
+    A concrete System implementation responsible for updating physics component
+    like position, velocity, and applying collision detection/response.
+    """
+
+    def __init__(self, gpu: GpuContext) -> None:
+        ...
+
+    def on_init(self, registry: Registry) -> None:
+        ...
+
+    def on_update(self, registry: Registry, dt: float) -> None:
+        """Handles integration of forces and collision checks."""
+        ...
+
+    def on_destroy(self, registry: Registry) -> None:
         ...

@@ -1,10 +1,14 @@
+#include <X11/X.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/trampoline_self_life_support.h>
 
 #include "core/gpu_context.h"
 #include "core/registry.h"
 #include "core/system.h"
 #include "core/world.h"
+#include "glgpu/vec.h"
 #include "graphics/rendering_system.h"
+#include "graphics/window.h"
 #include "physics/physics_system.h"
 
 namespace gl {
@@ -31,8 +35,6 @@ public:
 };
 
 PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
-	py::class_<GpuContext>(m, "GpuContext").def(py::init<>());
-
 	py::class_<Entity>(m, "Entity")
 			.def(py::init<>())
 			// Allow Python to treat Entity like a number (cast to int/long)
@@ -62,8 +64,19 @@ PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
 			.def("add_system", &World::add_system);
 
+	py::class_<Vec2u>(m, "Vec2u")
+			.def(py::init<uint32_t, uint32_t>())
+			.def_readwrite("x", &Vec2u::x)
+			.def_readwrite("y", &Vec2u::y);
+
+	py::class_<GpuContext>(m, "GpuContext").def(py::init<>());
+
+	py::class_<Window, py::smart_holder>(m, "Window")
+			.def(py::init<GpuContext&, const Vec2u&, const char*>());
+
 	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem")
-			.def(py::init<GpuContext&>());
+			.def(py::init<GpuContext&, std::shared_ptr<Window>>());
+	// TODO: headless .def(py::init<GpuContext&, Image>);
 	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem")
 			.def(py::init<GpuContext&>());
 }
