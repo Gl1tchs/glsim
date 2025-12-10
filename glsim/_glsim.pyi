@@ -5,6 +5,15 @@ from typing import Union
 EntityID = Union[int, "Entity"]
 
 
+class GpuContext:
+    """
+    Class representing the gpu device.
+    """
+
+    def __init__(self) -> None:
+        ...
+
+
 class Entity:
     """
     Represents a unique entity identifier (ID) in the ECS registry.
@@ -142,6 +151,9 @@ class PhysicsSystem(System):
     like position, velocity, and applying collision detection/response.
     """
 
+    def __init__(self, gpu: GpuContext) -> None:
+        ...
+
     def on_init(self, registry: Registry) -> None:
         ...
 
@@ -158,6 +170,9 @@ class RenderingSystem(System):
     A concrete System implementation responsible for drawing entities to the
     screen, typically querying position and mesh/material components.
     """
+
+    def __init__(self, gpu: GpuContext) -> None:
+        ...
 
     def on_init(self, registry: Registry) -> None:
         ...

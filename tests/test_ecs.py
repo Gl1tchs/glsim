@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 
-from glsim import World, System, RenderingSystem, PhysicsSystem
+from glsim import World, System
 
 
 class MySystem(System):
@@ -21,8 +21,6 @@ class TestECS(unittest.TestCase):
         world = World()
 
         world.add_system(MySystem())
-        world.add_system(RenderingSystem())
-        world.add_system(PhysicsSystem())
 
         world.update()
 

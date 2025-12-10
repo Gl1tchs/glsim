@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/gpu_context.h"
 #include "core/system.h"
 #include "glgpu/backend.h"
 #include "glgpu/types.h"
@@ -12,7 +13,7 @@ namespace gl {
 
 class RenderingSystem : public System {
 public:
-	RenderingSystem() = default;
+	RenderingSystem(GpuContext& p_ctx);
 	virtual ~RenderingSystem() = default;
 
 	void on_init(Registry& p_registry) override;
@@ -20,7 +21,7 @@ public:
 	void on_destroy(Registry& p_registry) override;
 
 private:
-	std::shared_ptr<RenderBackend> backend = nullptr;
+	std::shared_ptr<RenderBackend> backend;
 
 	CommandQueue graphics_queue = GL_NULL_HANDLE;
 	CommandQueue present_queue = GL_NULL_HANDLE;

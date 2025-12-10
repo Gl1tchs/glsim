@@ -2,13 +2,14 @@ import os
 import sys
 import unittest
 
-from glsim import Registry, PhysicsSystem
+from glsim import GpuContext, Registry, PhysicsSystem
 
 
 class TestPhysicsSystem(unittest.TestCase):
     def setUp(self):
+        self.gpu = GpuContext()
         self.reg = Registry()
-        self.physics = PhysicsSystem()
+        self.physics = PhysicsSystem(self.gpu)
 
         self.physics.on_init(self.reg)
 

@@ -2,13 +2,15 @@ import os
 import sys
 import time
 
-from glsim import World, RenderingSystem
+from glsim import GpuContext, World, RenderingSystem
 
 
 def main() -> None:
+    gpu = GpuContext()
+
     world = World()
 
-    world.add_system(RenderingSystem())
+    world.add_system(RenderingSystem(gpu))
 
     last = time.time()
     while True:

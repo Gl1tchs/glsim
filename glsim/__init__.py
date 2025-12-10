@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ._glsim import (
+    GpuContext,
     Entity,
     Registry,
     System,
@@ -15,6 +16,7 @@ __doc__ = "High performance simulation engine."
 __all__ = [
     "__doc__",
     "__version__",
+    "GpuContext",
     "Entity",
     "Registry",
     "System",

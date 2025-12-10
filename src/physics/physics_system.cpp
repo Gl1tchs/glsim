@@ -4,6 +4,8 @@
 
 namespace gl {
 
+PhysicsSystem::PhysicsSystem(GpuContext& p_ctx) { backend = p_ctx.get_backend(); }
+
 void PhysicsSystem::on_init(Registry& p_registry) { GL_LOG_TRACE("PhysicsSystem::on_init"); }
 
 void PhysicsSystem::on_destroy(Registry& p_registry) { GL_LOG_TRACE("PhysicsSystem::on_update"); }

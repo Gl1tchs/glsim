@@ -3,4 +3,5 @@
 	url = https://github.com/pybind/pybind11.git
 [submodule "external/glgpu"]
 	path = external/glgpu
-	url = https://github.com/Gl1tchs/glgpu.git
+    url = https://github.com/Gl1tchs/glgpu.git
+    branch = master

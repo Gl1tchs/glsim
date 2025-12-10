@@ -1,6 +1,7 @@
 #include "graphics/rendering_system.h"
 
 #include "core/assert.h"
+#include "core/gpu_context.h"
 #include "glgpu/backend.h"
 #include <SDL2/SDL_video.h>
 
@@ -10,13 +11,14 @@
 
 namespace gl {
 
-void RenderingSystem::on_init(Registry& p_registry) {
-	RenderBackendCreateInfo info = {};
-#ifdef GL_HEADLESS
-	info.headless_mode = true;
-#else
-	info.headless_mode = false;
+RenderingSystem::RenderingSystem(GpuContext& p_ctx) { backend = p_ctx.get_backend(); }
 
+void RenderingSystem::on_init(Registry& p_registry) {
+	if (!backend->is_swapchain_supported()) {
+		GL_ASSERT(false, "[RenderingSystem::on_init] Swapchain is not supported.");
+	}
+
+#ifndef GL_HEADLESS
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		GL_LOG_ERROR("SDL could not initialize! SDL_Error: {}", SDL_GetError());
 		return;
@@ -31,20 +33,23 @@ void RenderingSystem::on_init(Registry& p_registry) {
 		return;
 	}
 
+	void* connection_handle = nullptr;
+	void* window_handle = nullptr;
+
 	SDL_SysWMinfo wm_info;
 	SDL_VERSION(&wm_info.version);
 	if (SDL_GetWindowWMInfo(window, &wm_info)) {
 #if defined(__linux)
 		if (wm_info.subsystem == SDL_SYSWM_X11) {
-			info.native_connection_handle = wm_info.info.x11.display;
-			info.native_window_handle = (void*)wm_info.info.x11.window;
+			connection_handle = wm_info.info.x11.display;
+			window_handle = (void*)wm_info.info.x11.window;
 		} else {
 			GL_ASSERT(false, "Only X11 and windows is supported.");
 		}
 #elif defined(_WIN32)
 		if (wm_info.subsystem == SDL_SYSWM_WINDOWS) {
-			info.native_window_handle = (void*)wm_info.info.win.window;
-			info.native_connection_handle = (void*)wm_info.info.win.hinstance; // Usually
+			window_handle = (void*)wm_info.info.win.window;
+			connection_handle = (void*)wm_info.info.win.hinstance; // Usually
 		} else {
 			GL_ASSERT(false, "Unknown window manager.");
 		}
@@ -52,11 +57,10 @@ void RenderingSystem::on_init(Registry& p_registry) {
 #error "Unsupported OS"
 #endif
 	}
-#endif
 
-	backend = RenderBackend::create(info);
+	GL_ASSERT(
+			backend->attach_surface(connection_handle, window_handle) == SurfaceCreateError::NONE);
 
-#ifndef GL_HEADLESS
 	graphics_queue = backend->queue_get(QueueType::GRAPHICS);
 	present_queue = backend->queue_get(QueueType::PRESENT);
 

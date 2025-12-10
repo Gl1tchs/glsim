@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 
+#include "core/gpu_context.h"
 #include "core/registry.h"
 #include "core/system.h"
 #include "core/world.h"
@@ -30,6 +31,8 @@ public:
 };
 
 PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
+	py::class_<GpuContext>(m, "GpuContext").def(py::init<>());
+
 	py::class_<Entity>(m, "Entity")
 			.def(py::init<>())
 			// Allow Python to treat Entity like a number (cast to int/long)
@@ -59,8 +62,10 @@ PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
 			.def("add_system", &World::add_system);
 
-	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem").def(py::init<>());
-	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem").def(py::init<>());
+	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem")
+			.def(py::init<GpuContext&>());
+	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem")
+			.def(py::init<GpuContext&>());
 }
 
 } //namespace gl
