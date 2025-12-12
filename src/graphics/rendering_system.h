@@ -3,7 +3,7 @@
 #include "core/gpu_context.h"
 #include "core/system.h"
 #include "glgpu/backend.h"
-#include "glgpu/types.h"
+#include "graphics/renderer.h"
 #include "graphics/window.h"
 
 #ifndef GL_HEADLESS
@@ -24,15 +24,7 @@ public:
 private:
 	std::shared_ptr<RenderBackend> backend;
 	std::shared_ptr<Window> window;
-
-	CommandQueue graphics_queue;
-
-	CommandPool cmd_pool;
-	CommandBuffer cmd;
-
-	Semaphore image_available_sem;
-	Semaphore render_finished_sem;
-	Fence frame_fence;
+	std::unique_ptr<Renderer> renderer;
 };
 
 } //namespace gl

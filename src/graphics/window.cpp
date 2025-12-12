@@ -147,24 +147,32 @@ void Window::poll_events() const {
 	}
 }
 
-Image Window::get_target(Semaphore p_image_avail_semaphore) {
+Image Window::get_target(Semaphore p_wait_sem) {
 	// Acquire the next image from the swapchain
 	// This tells the GPU: "Give me an image index I can draw into."
 	// It signals 'image_available_sem' when the image is actually ready to be written to.
 	uint32_t image_index = 0;
-	auto acquire_result =
-			backend->swapchain_acquire_image(swapchain, p_image_avail_semaphore, &image_index);
+	const auto acquire_result =
+			backend->swapchain_acquire_image(swapchain, p_wait_sem, &image_index);
 
 	if (!acquire_result) {
-		// TODO: If acquire failed (e.g. window resized), handle it or skip frame
-		return GL_NULL_HANDLE;
+		switch (acquire_result.get_error()) {
+			case SwapchainAcquireError::OUT_OF_DATE:
+				on_resize(get_size());
+				return GL_NULL_HANDLE;
+			case SwapchainAcquireError::ERROR:
+				GL_LOG_FATAL("[Window::get_target] Failed to acquire swapchain image.");
+				return GL_NULL_HANDLE;
+		}
 	}
 
 	return *acquire_result;
 }
 
-void Window::present(Semaphore p_render_finished_sem) {
-	backend->queue_present(present_queue, swapchain, p_render_finished_sem);
+void Window::present(Semaphore p_signal_sem) {
+	if (!backend->queue_present(present_queue, swapchain, p_signal_sem)) {
+		on_resize(get_size());
+	}
 }
 
 void Window::on_resize(const Vec2u& p_size) {
@@ -177,5 +185,7 @@ Vec2u Window::get_size() const {
 	SDL_GetWindowSize(window, (int*)&size.x, (int*)&size.y);
 	return size;
 }
+
+DataFormat Window::get_swapchain_format() const { return backend->swapchain_get_format(swapchain); }
 
 } //namespace gl
