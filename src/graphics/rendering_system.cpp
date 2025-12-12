@@ -1,5 +1,6 @@
 #include "graphics/rendering_system.h"
 
+#include "core/event_system.h"
 #include "core/gpu_context.h"
 
 namespace gl {
@@ -18,6 +19,9 @@ void RenderingSystem::on_init(Registry& p_registry) {
 	image_available_sem = backend->semaphore_create();
 	render_finished_sem = backend->semaphore_create();
 	frame_fence = backend->fence_create();
+
+	event::subscribe<WindowResizeEvent>(
+			[&](const WindowResizeEvent& e) { window->on_resize(e.size); });
 }
 
 void RenderingSystem::on_destroy(Registry& p_registry) {
@@ -33,17 +37,6 @@ void RenderingSystem::on_destroy(Registry& p_registry) {
 }
 
 void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
-	// TODO: input system
-	SDL_Event e;
-	while (SDL_PollEvent(&e) != 0) {
-		if (e.type == SDL_QUIT) {
-			// quit = true;
-		}
-		if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
-			window->on_resize({ (uint32_t)e.window.data1, (uint32_t)e.window.data2 });
-		}
-	}
-
 	// Wait for the previous frame to finish processing on the CPU side
 	backend->fence_wait(frame_fence);
 	backend->fence_reset(frame_fence);

@@ -10,6 +10,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/debug)
+    add_compile_definitions(GL_DEBUG_BUILD)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/release)
+    add_compile_definitions(GL_RELEASE_BUILD)
+elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/relwithdebinfo)
+    add_compile_definitions(GL_DEBUG_BUILD)
+    add_compile_definitions(GL_RELEASE_BUILD)
+elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/dist)
+    add_compile_definitions(GL_RELEASE_BUILD)
+    add_compile_definitions(GL_DIST_BUILD)
+endif()
+
 # ------------------------------------------------------------------------------
 # Options
 # ------------------------------------------------------------------------------

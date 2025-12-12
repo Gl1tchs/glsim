@@ -1,11 +1,14 @@
 #include "graphics/window.h"
 
 #include "core/assert.h"
+#include "core/event_system.h"
+#include "core/input.h"
 #include "core/log.h"
 #include "glgpu/types.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
+#include <SDL2/SDL_video.h>
 
 namespace gl {
 
@@ -64,6 +67,11 @@ Window::Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title) :
 	// Create swapchain
 	swapchain = backend->swapchain_create();
 	backend->swapchain_resize(graphics_queue, swapchain, p_size, true /* vsync */);
+
+	event::subscribe<WindowCloseEvent>([&](WindowCloseEvent e) { window_should_close = true; });
+
+	// Initialize input system
+	Input::init();
 }
 
 Window::~Window() {
@@ -71,6 +79,72 @@ Window::~Window() {
 
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+bool Window::should_close() const { return window_should_close; }
+
+void Window::poll_events() const {
+	SDL_Event e;
+	while (SDL_PollEvent(&e) != 0) {
+		if (e.type == SDL_QUIT) {
+			event::notify<WindowCloseEvent>(WindowCloseEvent{});
+		}
+
+		if (e.type == SDL_WINDOWEVENT) {
+			if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+				event::notify<WindowResizeEvent>(WindowResizeEvent{
+						.size = { (uint32_t)e.window.data1, (uint32_t)e.window.data2 },
+				});
+			} else if (e.window.event == SDL_WINDOWEVENT_CLOSE) {
+				event::notify<WindowCloseEvent>(WindowCloseEvent{});
+			} else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED) {
+				event::notify<WindowMinimizeEvent>(WindowMinimizeEvent{});
+			}
+		}
+
+		if (e.type == SDL_KEYDOWN) {
+			// TODO: Filter out repeats if desired (e.key.repeat != 0)
+			event::notify<KeyPressEvent>(KeyPressEvent{
+					.key_code = static_cast<KeyCode>(e.key.keysym.sym),
+			});
+		}
+
+		if (e.type == SDL_KEYUP) {
+			event::notify<KeyReleaseEvent>(KeyReleaseEvent{
+					.key_code = static_cast<KeyCode>(e.key.keysym.sym),
+			});
+		}
+
+		if (e.type == SDL_TEXTINPUT) {
+			event::notify<KeyTypeEvent>(KeyTypeEvent{
+					.text = e.text.text,
+			});
+		}
+
+		if (e.type == SDL_MOUSEMOTION) {
+			event::notify<MouseMoveEvent>(MouseMoveEvent{
+					.position = { (float)e.motion.x, (float)e.motion.y },
+			});
+		}
+
+		if (e.type == SDL_MOUSEBUTTONDOWN) {
+			event::notify<MousePressEvent>(MousePressEvent{
+					.button_code = static_cast<MouseButton>(e.button.button),
+			});
+		}
+
+		if (e.type == SDL_MOUSEBUTTONUP) {
+			event::notify<MouseReleaseEvent>(MouseReleaseEvent{
+					.button_code = static_cast<MouseButton>(e.button.button),
+			});
+		}
+
+		if (e.type == SDL_MOUSEWHEEL) {
+			event::notify<MouseScrollEvent>(MouseScrollEvent{
+					.offset = { (float)e.wheel.x, (float)e.wheel.y },
+			});
+		}
+	}
 }
 
 Image Window::get_target(Semaphore p_image_avail_semaphore) {

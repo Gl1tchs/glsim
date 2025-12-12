@@ -2,24 +2,49 @@ import os
 import sys
 import time
 
-from glsim import World, Vec2u, GpuContext, Window, RenderingSystem
+from glsim import (
+    World,
+    Vec2u,
+    GpuContext,
+    Window,
+    RenderingSystem,
+    KeyCode,
+    Input,
+    WindowMinimizeEvent,
+    EventType,
+    subscribe_event,
+)
+
+
+def on_window_minimize(e: WindowMinimizeEvent):
+    print("Window Minimized")
 
 
 def main() -> None:
     gpu = GpuContext()
 
-    size = Vec2u(800, 600)
-    window = Window(gpu, size, "Hello Glsim")
-
     world = World()
 
-    world.add_system(RenderingSystem(gpu, window))
+    window = None
+    if "--headless" not in sys.argv:
+        window = Window(gpu, Vec2u(800, 600), "Hello Glsim")
+        world.add_system(RenderingSystem(gpu, window))
+
+        subscribe_event(EventType.WINDOW_MINIMIZE, on_window_minimize)
 
     last = time.time()
     while True:
-        curr = time.time()
+        if window and window.should_close():
+            break
 
+        curr = time.time()
         dt = curr - last
+
+        if window:
+            window.poll_events()
+
+            if Input.is_key_pressed(KeyCode.SPACE):
+                print("Hello World")
 
         world.update(dt)
 

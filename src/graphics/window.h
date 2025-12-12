@@ -12,6 +12,10 @@ public:
 	Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title);
 	~Window();
 
+	bool should_close() const;
+
+	void poll_events() const;
+
 	/**
 	 * @returns `Image` handle if succeed, `GL_NULL_HANDLE` otherwise
 	 */
@@ -31,6 +35,8 @@ private:
 
 	CommandQueue graphics_queue;
 	CommandQueue present_queue;
+
+	bool window_should_close = false;
 };
 
 } //namespace gl
