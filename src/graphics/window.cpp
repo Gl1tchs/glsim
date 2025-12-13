@@ -58,8 +58,7 @@ Window::Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title) :
 	}
 
 	// NOTE: this will recreate the surface and very error prone.
-	GL_ASSERT(p_ctx.get_backend()->attach_surface(connection_handle, window_handle) ==
-			SurfaceCreateError::NONE);
+	GL_ASSERT(p_ctx.get_backend()->attach_surface(connection_handle, window_handle) == Error::NONE);
 
 	graphics_queue = backend->queue_get(QueueType::GRAPHICS);
 	present_queue = backend->queue_get(QueueType::PRESENT);
@@ -157,12 +156,14 @@ Image Window::get_target(Semaphore p_wait_sem) {
 
 	if (!acquire_result) {
 		switch (acquire_result.get_error()) {
-			case SwapchainAcquireError::OUT_OF_DATE:
+			case Error::SWAPCHAIN_OUT_OF_DATE:
 				on_resize(get_size());
 				return GL_NULL_HANDLE;
-			case SwapchainAcquireError::ERROR:
+			case Error::SWAPCHAIN_LOST:
 				GL_LOG_FATAL("[Window::get_target] Failed to acquire swapchain image.");
 				return GL_NULL_HANDLE;
+			default:
+				break;
 		}
 	}
 

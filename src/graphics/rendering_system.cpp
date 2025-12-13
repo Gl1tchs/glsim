@@ -70,7 +70,7 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 		backend->buffer_unmap(material_buffer);
 
 		ShaderUniform uniform;
-		uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
+		uniform.type = ShaderUniformType::UNIFORM_BUFFER;
 		uniform.binding = 0;
 		uniform.data.push_back(material_buffer);
 
