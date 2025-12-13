@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.15...4.0)
 project(glsim VERSION 0.1.0)
 
 # ------------------------------------------------------------------------------
+# Options
+# ------------------------------------------------------------------------------
+option(GL_HEADLESS "Build headless mode" OFF)
+
+# ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
@@ -10,26 +15,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Append into module path for our own configurations
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/debug)
     add_compile_definitions(GL_DEBUG_BUILD)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/release)
     add_compile_definitions(GL_RELEASE_BUILD)
 elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/relwithdebinfo)
     add_compile_definitions(GL_DEBUG_BUILD)
     add_compile_definitions(GL_RELEASE_BUILD)
 elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-    set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/dist)
     add_compile_definitions(GL_RELEASE_BUILD)
     add_compile_definitions(GL_DIST_BUILD)
 endif()
-
-# ------------------------------------------------------------------------------
-# Options
-# ------------------------------------------------------------------------------
-option(GL_HEADLESS "Build headless mode" OFF)
 
 # ------------------------------------------------------------------------------
 # Dependencies
@@ -40,6 +39,9 @@ add_subdirectory(external/glgpu)
 
 add_subdirectory(external/pybind11)
 
+# Build shaders
+add_subdirectory(shaders)
+
 # ------------------------------------------------------------------------------
 # glsim module
 # ------------------------------------------------------------------------------
@@ -48,9 +50,10 @@ file(GLOB_RECURSE SOURCE_FILES "src/*.cpp" "src/*.h")
 python_add_library(_glsim MODULE ${SOURCE_FILES} WITH_SOABI)
 
 target_include_directories(_glsim PRIVATE
-    src/
-    external/pybind11/include/
-    external/glgpu/include/
+    ${CMAKE_CURRENT_LIST_DIR}/src/
+    ${CMAKE_BINARY_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/external/pybind11/include/
+    ${CMAKE_CURRENT_LIST_DIR}/external/glgpu/include/
 )
 target_link_libraries(_glsim PRIVATE glgpu pybind11::headers)
 target_precompile_headers(_glsim PRIVATE src/pch.h)

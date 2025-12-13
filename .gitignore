@@ -1,3 +1,6 @@
+# Pipeline cache folder
+.glitch/
+
 # Editor folders
 .vs/
 .vscode/

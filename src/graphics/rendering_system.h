@@ -3,6 +3,11 @@
 #include "core/gpu_context.h"
 #include "core/system.h"
 #include "glgpu/backend.h"
+#include "glgpu/color.h"
+#include "glgpu/types.h"
+#include "glgpu/vec.h"
+#include "graphics/camera.h"
+#include "graphics/graphics_pipeline.h"
 #include "graphics/renderer.h"
 #include "graphics/window.h"
 
@@ -25,6 +30,38 @@ private:
 	std::shared_ptr<RenderBackend> backend;
 	std::shared_ptr<Window> window;
 	std::unique_ptr<Renderer> renderer;
+
+	// Scene data
+	std::unique_ptr<GraphicsPipeline> pipeline; // unlit pipeline
+
+	struct Vertex {
+		Vec4f position;
+	};
+
+	struct SceneData {
+		Mat4 viewproj;
+	};
+
+	struct PushConstants {
+		Mat4 transform;
+		BufferDeviceAddress vertex_buffer_addr;
+		BufferDeviceAddress scene_buffer_addr;
+	};
+
+	struct MaterialData {
+		Color base_color;
+	};
+
+	Buffer vertex_buffer;
+	BufferDeviceAddress vertex_buffer_addr;
+
+	Buffer scene_buffer;
+	BufferDeviceAddress scene_buffer_addr;
+
+	Buffer material_buffer;
+	UniformSet material_set;
+
+	Transform transform;
 };
 
 } //namespace gl
