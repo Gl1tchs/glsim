@@ -2,8 +2,10 @@
 
 #include "core/gpu_context.h"
 #include "core/system.h"
+#include "core/transform.h"
 #include "glgpu/backend.h"
 #include "glgpu/color.h"
+#include "glgpu/mat.h"
 #include "glgpu/types.h"
 #include "glgpu/vec.h"
 #include "graphics/camera.h"
@@ -21,7 +23,7 @@ namespace gl {
 class RenderingSystem : public System {
 public:
 	RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_target);
-	virtual ~RenderingSystem() = default;
+	virtual ~RenderingSystem();
 
 	void on_init(Registry& p_registry) override;
 	void on_update(Registry& p_registry, float p_dt) override;
@@ -58,6 +60,9 @@ private:
 
 	Buffer material_buffer;
 	UniformSet material_set;
+
+	PerspectiveCamera camera;
+	Transform camera_transform;
 
 	std::shared_ptr<StaticMesh> cube_mesh;
 };

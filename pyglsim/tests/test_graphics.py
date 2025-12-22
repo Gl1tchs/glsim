@@ -16,7 +16,7 @@ from pyglsim import (
 )
 
 
-def on_window_minimize(e: WindowMinimizeEvent):
+def on_window_minimize(_: WindowMinimizeEvent) -> None:
     print("Window Minimized")
 
 
@@ -34,7 +34,7 @@ def main() -> None:
 
     e = world.spawn()
     world.add_mesh(e)
-
+    
     last = time.time()
     while True:
         if window and window.should_close():

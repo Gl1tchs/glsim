@@ -169,8 +169,10 @@ PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
 			// Bind update method
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
 			.def("add_system", &World::add_system)
-			.def("add_mesh",
-					[](World& world, Entity entity) { world.assign<MeshComponent>(entity); });
+			.def("add_mesh", [](World& self, Entity entity) {
+				self.assign<Transform>(entity);
+				self.assign<MeshComponent>(entity);
+			});
 
 	py::class_<Vec2u>(m, "Vec2u")
 			.def(py::init<uint32_t, uint32_t>())

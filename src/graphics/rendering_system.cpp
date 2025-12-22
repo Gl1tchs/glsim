@@ -85,12 +85,9 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 
 		SceneData* data = (SceneData*)backend->buffer_map(scene_buffer);
 		{
-			PerspectiveCamera camera;
-
-			Transform cam_transform;
-			cam_transform.position = { 0, 0, -3 };
-
-			data->viewproj = camera.get_projection_matrix() * camera.get_view_matrix(cam_transform);
+			camera_transform.position = { 0, 0, 3 };
+			data->viewproj =
+					camera.get_projection_matrix() * camera.get_view_matrix(camera_transform);
 		}
 		backend->buffer_unmap(scene_buffer);
 	}
@@ -116,12 +113,7 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 	}
 }
 
-void RenderingSystem::on_init(Registry& p_registry) {
-	event::subscribe<WindowResizeEvent>(
-			[&](const WindowResizeEvent& e) { window->on_resize(e.size); });
-}
-
-void RenderingSystem::on_destroy(Registry& p_registry) {
+RenderingSystem::~RenderingSystem() {
 	backend->device_wait();
 	backend->uniform_set_free(material_set);
 	backend->buffer_free(material_buffer);
@@ -129,6 +121,13 @@ void RenderingSystem::on_destroy(Registry& p_registry) {
 
 	cube_mesh.reset();
 }
+
+void RenderingSystem::on_init(Registry& p_registry) {
+	event::subscribe<WindowResizeEvent>(
+			[&](const WindowResizeEvent& e) { window->on_resize(e.size); });
+}
+
+void RenderingSystem::on_destroy(Registry& p_registry) {}
 
 void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 	renderer->wait_for_frame();
@@ -159,6 +158,20 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 			backend->buffer_unmap(material_buffer);
 		}
 
+		{
+			const Vec3u size = backend->image_get_size(target_image);
+
+			// Update aspect ratio
+			camera.aspect_ratio = size.y / (float)size.x;
+
+			SceneData* data = (SceneData*)backend->buffer_map(scene_buffer);
+			{
+				data->viewproj =
+						camera.get_projection_matrix() * camera.get_view_matrix(camera_transform);
+			}
+			backend->buffer_unmap(scene_buffer);
+		}
+
 		RenderingAttachment attachment = {};
 		attachment.image = target_image;
 		attachment.layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
@@ -176,6 +189,7 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 			for (Entity entity : p_registry.view<Transform, MeshComponent>()) {
 				auto [transform, mc] = p_registry.get_many<Transform, MeshComponent>(entity);
 
+				// TODO: remove this
 				transform->rotate(20 * p_dt, VEC3_UP);
 
 				switch (mc->type) {
@@ -190,7 +204,7 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 
 						backend->command_bind_index_buffer(
 								cmd, cube_mesh->index_buffer, 0, IndexType::UINT32);
-						backend->command_draw_indexed(cmd, 36);
+						backend->command_draw_indexed(cmd, cube_mesh->index_count);
 				}
 			}
 		}

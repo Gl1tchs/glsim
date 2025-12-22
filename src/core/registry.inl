@@ -19,14 +19,18 @@ template <typename T> T* Registry::assign(Entity p_entity) {
 		component_pools[component_id] = new ComponentPool(sizeof(T));
 	}
 
-	T* component = new (component_pools[component_id]->get(get_entity_index(p_entity))) T();
+	T* component = new T();
+
+	// Bookkeep
+	component_pools[component_id]->add(component);
 
 	entities[get_entity_index(p_entity)].mask.set(component_id);
 
 	return component;
 }
 
-template <typename... TComponents> std::tuple<TComponents*...> Registry::assign_many(Entity p_entity) {
+template <typename... TComponents>
+std::tuple<TComponents*...> Registry::assign_many(Entity p_entity) {
 	if (!is_valid(p_entity)) {
 		return std::make_tuple(static_cast<TComponents*>(nullptr)...);
 	}

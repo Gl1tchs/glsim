@@ -1,11 +1,12 @@
-from typing import Union, Callable
+from typing import TypeVar, Union, Callable
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+
+_T = TypeVar("_T")
 
 # Define the C++ primitive type used for entities
 # Union[int, Entity] is used to allow Python to pass regular ints
 EntityID = Union[int, "Entity"]
-
 
 class Entity:
     """
@@ -50,7 +51,6 @@ class Entity:
             entity: The 64-bit Entity ID.
         """
         ...
-
 
 class Registry:
     """
@@ -98,7 +98,6 @@ class Registry:
         """
         ...
 
-
 class System:
     """
     Base class for all logic and behavior in the ECS.
@@ -137,7 +136,6 @@ class System:
         """
         ...
 
-
 class World(Registry):
     """
     The main ECS orchestration object, inheriting from Registry and managing
@@ -168,44 +166,30 @@ class World(Registry):
         """
         ...
 
-    def add_mesh(self, entity: Entity) -> None:
-        ...
-
+    def add_mesh(self, entity: EntityID) -> None: ...
 
 @dataclass
 class Vec2u:
     x: int
     y: int
 
-
 @dataclass
 class Vec2f:
     x: float
     y: float
-
 
 class GpuContext:
     """
     Class representing the gpu device.
     """
 
-    def __init__(self) -> None:
-        ...
-
+    def __init__(self) -> None: ...
 
 class Window:
-    def __init__(self, ctx: GpuContext, size: Vec2u, title: str) -> None:
-        ...
-
-    def should_close(self) -> bool:
-        ...
-
-    def get_size(self) -> Vec2u:
-        ...
-
-    def poll_events(self) -> None:
-        ...
-
+    def __init__(self, ctx: GpuContext, size: Vec2u, title: str) -> None: ...
+    def should_close(self) -> bool: ...
+    def get_size(self) -> Vec2u: ...
+    def poll_events(self) -> None: ...
 
 class RenderingSystem(System):
     """
@@ -213,19 +197,13 @@ class RenderingSystem(System):
     screen, typically querying position and mesh/material components.
     """
 
-    def __init__(self, gpu: GpuContext, window: Window) -> None:
-        ...
-
-    def on_init(self, registry: Registry) -> None:
-        ...
-
+    def __init__(self, gpu: GpuContext, window: Window) -> None: ...
+    def on_init(self, registry: Registry) -> None: ...
     def on_update(self, registry: Registry, dt: float) -> None:
         """Handles culling, batching, and drawing of visible entities."""
         ...
 
-    def on_destroy(self, registry: Registry) -> None:
-        ...
-
+    def on_destroy(self, registry: Registry) -> None: ...
 
 class PhysicsSystem(System):
     """
@@ -233,19 +211,13 @@ class PhysicsSystem(System):
     like position, velocity, and applying collision detection/response.
     """
 
-    def __init__(self, gpu: GpuContext) -> None:
-        ...
-
-    def on_init(self, registry: Registry) -> None:
-        ...
-
+    def __init__(self, gpu: GpuContext) -> None: ...
+    def on_init(self, registry: Registry) -> None: ...
     def on_update(self, registry: Registry, dt: float) -> None:
         """Handles integration of forces and collision checks."""
         ...
 
-    def on_destroy(self, registry: Registry) -> None:
-        ...
-
+    def on_destroy(self, registry: Registry) -> None: ...
 
 class KeyCode(IntEnum):
     UNKNOWN = 0
@@ -320,12 +292,12 @@ class KeyCode(IntEnum):
     Z = 122
     DELETE = 127
     CAPSLOCK = 0x40000039
-    F1 = 0x4000003a
-    F2 = 0x4000003b
-    F3 = 0x4000003c
-    F4 = 0x4000003d
-    F5 = 0x4000003e
-    F6 = 0x4000003f
+    F1 = 0x4000003A
+    F2 = 0x4000003B
+    F3 = 0x4000003C
+    F4 = 0x4000003D
+    F5 = 0x4000003E
+    F6 = 0x4000003F
     F7 = 0x40000040
     F8 = 0x40000041
     F9 = 0x40000042
@@ -336,11 +308,11 @@ class KeyCode(IntEnum):
     SCROLLLOCK = 0x40000047
     PAUSE = 0x40000048
     INSERT = 0x40000049
-    HOME = 0x4000004a
-    PAGEUP = 0x4000004b
-    END = 0x4000004d
-    PAGEDOWN = 0x4000004e
-    ARROW_RIGHT = 0x4000004f
+    HOME = 0x4000004A
+    PAGEUP = 0x4000004B
+    END = 0x4000004D
+    PAGEDOWN = 0x4000004E
+    ARROW_RIGHT = 0x4000004F
     ARROW_LEFT = 0x40000050
     ARROW_DOWN = 0x40000051
     ARROW_UP = 0x40000052
@@ -351,12 +323,12 @@ class KeyCode(IntEnum):
     KP_PLUS = 0x40000057
     KP_ENTER = 0x40000058
     KP_1 = 0x40000059
-    KP_2 = 0x4000005a
-    KP_3 = 0x4000005b
-    KP_4 = 0x4000005c
-    KP_5 = 0x4000005d
-    KP_6 = 0x4000005e
-    KP_7 = 0x4000005f
+    KP_2 = 0x4000005A
+    KP_3 = 0x4000005B
+    KP_4 = 0x4000005C
+    KP_5 = 0x4000005D
+    KP_6 = 0x4000005E
+    KP_7 = 0x4000005F
     KP_8 = 0x40000060
     KP_9 = 0x40000061
     KP_0 = 0x40000062
@@ -366,12 +338,12 @@ class KeyCode(IntEnum):
     KP_EQUALS = 0x40000067
     F13 = 0x40000068
     F14 = 0x40000069
-    F15 = 0x4000006a
-    F16 = 0x4000006b
-    F17 = 0x4000006c
-    F18 = 0x4000006d
-    F19 = 0x4000006e
-    F20 = 0x4000006f
+    F15 = 0x4000006A
+    F16 = 0x4000006B
+    F17 = 0x4000006C
+    F18 = 0x4000006D
+    F19 = 0x4000006E
+    F20 = 0x4000006F
     F21 = 0x40000070
     F22 = 0x40000071
     F23 = 0x40000072
@@ -382,82 +354,82 @@ class KeyCode(IntEnum):
     SELECT = 0x40000077
     STOP = 0x40000078
     AGAIN = 0x40000079
-    UNDO = 0x4000007a
-    CUT = 0x4000007b
-    COPY = 0x4000007c
-    PASTE = 0x4000007d
-    FIND = 0x4000007e
-    MUTE = 0x4000007f
+    UNDO = 0x4000007A
+    CUT = 0x4000007B
+    COPY = 0x4000007C
+    PASTE = 0x4000007D
+    FIND = 0x4000007E
+    MUTE = 0x4000007F
     VOLUMEUP = 0x40000080
     VOLUMEDOWN = 0x40000081
     KP_COMMA = 0x40000085
     KP_EQUALSAS400 = 0x40000086
     ALTERASE = 0x40000099
-    SYSREQ = 0x4000009a
-    CANCEL = 0x4000009b
-    CLEAR = 0x4000009c
-    PRIOR = 0x4000009d
-    RETURN2 = 0x4000009e
-    SEPARATOR = 0x4000009f
-    OUT = 0x400000a0
-    OPER = 0x400000a1
-    CLEARAGAIN = 0x400000a2
-    CRSEL = 0x400000a3
-    EXSEL = 0x400000a4
-    KP_00 = 0x400000b0
-    KP_000 = 0x400000b1
-    THOUSANDSSEPARATOR = 0x400000b2
-    DECIMALSEPARATOR = 0x400000b3
-    CURRENCYUNIT = 0x400000b4
-    CURRENCYSUBUNIT = 0x400000b5
-    KP_LEFTPAREN = 0x400000b6
-    KP_RIGHTPAREN = 0x400000b7
-    KP_LEFTBRACE = 0x400000b8
-    KP_RIGHTBRACE = 0x400000b9
-    KP_TAB = 0x400000ba
-    KP_BACKSPACE = 0x400000bb
-    KP_A = 0x400000bc
-    KP_B = 0x400000bd
-    KP_C = 0x400000be
-    KP_D = 0x400000bf
-    KP_E = 0x400000c0
-    KP_F = 0x400000c1
-    KP_XOR = 0x400000c2
-    KP_POWER = 0x400000c3
-    KP_PERCENT = 0x400000c4
-    KP_LESS = 0x400000c5
-    KP_GREATER = 0x400000c6
-    KP_AMPERSAND = 0x400000c7
-    KP_DBLAMPERSAND = 0x400000c8
-    KP_VERTICALBAR = 0x400000c9
-    KP_DBLVERTICALBAR = 0x400000ca
-    KP_COLON = 0x400000cb
-    KP_HASH = 0x400000cc
-    KP_SPACE = 0x400000cd
-    KP_AT = 0x400000ce
-    KP_EXCLAM = 0x400000cf
-    KP_MEMSTORE = 0x400000d0
-    KP_MEMRECALL = 0x400000d1
-    KP_MEMCLEAR = 0x400000d2
-    KP_MEMADD = 0x400000d3
-    KP_MEMSUBTRACT = 0x400000d4
-    KP_MEMMULTIPLY = 0x400000d5
-    KP_MEMDIVIDE = 0x400000d6
-    KP_PLUSMINUS = 0x400000d7
-    KP_CLEAR = 0x400000d8
-    KP_CLEARENTRY = 0x400000d9
-    KP_BINARY = 0x400000da
-    KP_OCTAL = 0x400000db
-    KP_DECIMAL = 0x400000dc
-    KP_HEXADECIMAL = 0x400000dd
-    LEFT_CTRL = 0x400000e0
-    LEFT_SHIFT = 0x400000e1
-    LEFT_ALT = 0x400000e2
-    LEFT_GUI = 0x400000e3
-    RIGHT_CTRL = 0x400000e4
-    RIGHT_SHIFT = 0x400000e5
-    RIGHT_ALT = 0x400000e6
-    RIGHT_GUI = 0x400000e7
+    SYSREQ = 0x4000009A
+    CANCEL = 0x4000009B
+    CLEAR = 0x4000009C
+    PRIOR = 0x4000009D
+    RETURN2 = 0x4000009E
+    SEPARATOR = 0x4000009F
+    OUT = 0x400000A0
+    OPER = 0x400000A1
+    CLEARAGAIN = 0x400000A2
+    CRSEL = 0x400000A3
+    EXSEL = 0x400000A4
+    KP_00 = 0x400000B0
+    KP_000 = 0x400000B1
+    THOUSANDSSEPARATOR = 0x400000B2
+    DECIMALSEPARATOR = 0x400000B3
+    CURRENCYUNIT = 0x400000B4
+    CURRENCYSUBUNIT = 0x400000B5
+    KP_LEFTPAREN = 0x400000B6
+    KP_RIGHTPAREN = 0x400000B7
+    KP_LEFTBRACE = 0x400000B8
+    KP_RIGHTBRACE = 0x400000B9
+    KP_TAB = 0x400000BA
+    KP_BACKSPACE = 0x400000BB
+    KP_A = 0x400000BC
+    KP_B = 0x400000BD
+    KP_C = 0x400000BE
+    KP_D = 0x400000BF
+    KP_E = 0x400000C0
+    KP_F = 0x400000C1
+    KP_XOR = 0x400000C2
+    KP_POWER = 0x400000C3
+    KP_PERCENT = 0x400000C4
+    KP_LESS = 0x400000C5
+    KP_GREATER = 0x400000C6
+    KP_AMPERSAND = 0x400000C7
+    KP_DBLAMPERSAND = 0x400000C8
+    KP_VERTICALBAR = 0x400000C9
+    KP_DBLVERTICALBAR = 0x400000CA
+    KP_COLON = 0x400000CB
+    KP_HASH = 0x400000CC
+    KP_SPACE = 0x400000CD
+    KP_AT = 0x400000CE
+    KP_EXCLAM = 0x400000CF
+    KP_MEMSTORE = 0x400000D0
+    KP_MEMRECALL = 0x400000D1
+    KP_MEMCLEAR = 0x400000D2
+    KP_MEMADD = 0x400000D3
+    KP_MEMSUBTRACT = 0x400000D4
+    KP_MEMMULTIPLY = 0x400000D5
+    KP_MEMDIVIDE = 0x400000D6
+    KP_PLUSMINUS = 0x400000D7
+    KP_CLEAR = 0x400000D8
+    KP_CLEARENTRY = 0x400000D9
+    KP_BINARY = 0x400000DA
+    KP_OCTAL = 0x400000DB
+    KP_DECIMAL = 0x400000DC
+    KP_HEXADECIMAL = 0x400000DD
+    LEFT_CTRL = 0x400000E0
+    LEFT_SHIFT = 0x400000E1
+    LEFT_ALT = 0x400000E2
+    LEFT_GUI = 0x400000E3
+    RIGHT_CTRL = 0x400000E4
+    RIGHT_SHIFT = 0x400000E5
+    RIGHT_ALT = 0x400000E6
+    RIGHT_GUI = 0x400000E7
     MODE = 0x40000101
     AUDIONEXT = 0x40000102
     AUDIOPREV = 0x40000103
@@ -467,12 +439,12 @@ class KeyCode(IntEnum):
     MEDIASELECT = 0x40000107
     WWW = 0x40000108
     MAIL = 0x40000109
-    CALCULATOR = 0x4000010a
-    COMPUTER = 0x4000010b
-    AC_SEARCH = 0x4000010c
-    AC_HOME = 0x4000010d
-    AC_BACK = 0x4000010e
-    AC_FORWARD = 0x4000010f
+    CALCULATOR = 0x4000010A
+    COMPUTER = 0x4000010B
+    AC_SEARCH = 0x4000010C
+    AC_HOME = 0x4000010D
+    AC_BACK = 0x4000010E
+    AC_FORWARD = 0x4000010F
     AC_STOP = 0x40000110
     AC_REFRESH = 0x40000111
     AC_BOOKMARKS = 0x40000112
@@ -483,16 +455,15 @@ class KeyCode(IntEnum):
     KBDILLUMDOWN = 0x40000117
     KBDILLUMUP = 0x40000118
     EJECT = 0x40000119
-    SLEEP = 0x4000011a
-    APP1 = 0x4000011b
-    APP2 = 0x4000011c
-    AUDIOREWIND = 0x4000011d
-    AUDIOFASTFORWARD = 0x4000011e
-    SOFTLEFT = 0x4000011f
+    SLEEP = 0x4000011A
+    APP1 = 0x4000011B
+    APP2 = 0x4000011C
+    AUDIOREWIND = 0x4000011D
+    AUDIOFASTFORWARD = 0x4000011E
+    SOFTLEFT = 0x4000011F
     SOFTRIGHT = 0x40000120
     CALL = 0x40000121
     ENDCALL = 0x40000122
-
 
 class MouseButton(IntEnum):
     LEFT = 1
@@ -500,7 +471,6 @@ class MouseButton(IntEnum):
     RIGHT = 3
     X1 = 4
     X2 = 5
-
 
 class EventType(Enum):
     WINDOW_RESIZE = 0
@@ -514,57 +484,43 @@ class EventType(Enum):
     MOUSE_PRESS = 8
     MOUSE_RELEASE = 9
 
-
 class WindowResizeEvent:
     size: Vec2u
-
 
 class WindowMinimizeEvent:
     def __init__(self) -> None: ...
 
-
 class WindowCloseEvent:
     def __init__(self) -> None: ...
-
 
 class KeyPressEvent:
     key_code: KeyCode
 
-
 class KeyReleaseEvent:
     key_code: KeyCode
-
 
 class KeyTypeEvent:
     text: str
 
-
 class MouseMoveEvent:
     position: Vec2f
-
 
 class MouseScrollEvent:
     offset: Vec2f
 
-
 class MousePressEvent:
     button_code: MouseButton
-
 
 class MouseReleaseEvent:
     button_code: MouseButton
 
-
-def subscribe_event(event_type: EventType,
-                    callback: Callable[[object], None]) -> None:
+def subscribe_event(event_type: EventType, callback: Callable[[_T], None]) -> None:
     """Subscribes a Python callable to a C++ event type."""
     ...
-
 
 def unsubscribe_event(event_type: EventType) -> None:
     """Unsubscribes all Python callables from a C++ event type."""
     ...
-
 
 class Input:
     """Static utility class for direct input querying."""
