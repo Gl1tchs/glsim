@@ -1,7 +1,9 @@
 #include "graphics/rendering_system.h"
 
+#include "core/components.h"
 #include "core/event_system.h"
 #include "core/gpu_context.h"
+#include "core/transform.h"
 #include "glgpu/color.h"
 #include "glgpu/types.h"
 #include "graphics/camera.h"
@@ -22,22 +24,56 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 	};
 	pipeline = std::make_unique<GraphicsPipeline>(p_ctx, create_info);
 
-	const std::vector<Vertex> vertices = {
-		{ { -0.5f, -0.5f, 0.0f, 0.0f } },
-		{ { 0.5f, -0.5f, 0.0f, 0.0f } },
-		{ { 0.0f, 0.5f, 0.0f, 0.0f } },
-	};
-
 	{
-		vertex_buffer = backend->buffer_create(vertices.size() * sizeof(Vertex),
-				BUFFER_USAGE_VERTEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
-						BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-				MemoryAllocationType::CPU);
-		vertex_buffer_addr = backend->buffer_get_device_address(vertex_buffer);
+		std::vector<MeshVertex> vertices = {
+			// Position           uv_x   Normal              uv_y
+			// Front face (Z = 1)
+			{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 0
+			{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 1
+			{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 2
+			{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 3
 
-		Vertex* data = (Vertex*)backend->buffer_map(vertex_buffer);
-		memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
-		backend->buffer_unmap(vertex_buffer);
+			// Back face (Z = -1)
+			{ { -0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 4
+			{ { -0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 5
+			{ { 0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 6
+			{ { 0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 7
+
+			// Top face (Y = 1)
+			{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 8
+			{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 9
+			{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 10
+			{ { -0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 11
+
+			// Bottom face (Y = -1)
+			{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 12
+			{ { -0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 13
+			{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 14
+			{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 15
+
+			// Right face (X = 1)
+			{ { 0.5f, -0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 16
+			{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 17
+			{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 18
+			{ { 0.5f, 0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 19
+
+			// Left face (X = -1)
+			{ { -0.5f, -0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 0.0f }, // 20
+			{ { -0.5f, 0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 21
+			{ { -0.5f, 0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 22
+			{ { -0.5f, -0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 0.0f } // 23
+		};
+
+		std::vector<uint32_t> indices = {
+			0, 1, 2, 0, 2, 3, // Front
+			4, 5, 6, 4, 6, 7, // Back
+			8, 9, 10, 8, 10, 11, // Top
+			12, 13, 14, 12, 14, 15, // Bottom
+			16, 17, 18, 16, 18, 19, // Right
+			20, 21, 22, 20, 22, 23 // Left
+		};
+
+		cube_mesh = StaticMesh::create(backend, vertices, indices);
 	}
 
 	{
@@ -49,8 +85,10 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 
 		SceneData* data = (SceneData*)backend->buffer_map(scene_buffer);
 		{
-			OrthographicCamera camera;
+			PerspectiveCamera camera;
+
 			Transform cam_transform;
+			cam_transform.position = { 0, 0, -3 };
 
 			data->viewproj = camera.get_projection_matrix() * camera.get_view_matrix(cam_transform);
 		}
@@ -88,7 +126,8 @@ void RenderingSystem::on_destroy(Registry& p_registry) {
 	backend->uniform_set_free(material_set);
 	backend->buffer_free(material_buffer);
 	backend->buffer_free(scene_buffer);
-	backend->buffer_free(vertex_buffer);
+
+	cube_mesh.reset();
 }
 
 void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
@@ -134,14 +173,26 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 
 			backend->command_bind_uniform_sets(cmd, pipeline->shader, 0, { material_set });
 
-			PushConstants pc = {};
-			pc.transform = transform.to_mat4();
-			pc.vertex_buffer_addr = vertex_buffer_addr;
-			pc.scene_buffer_addr = scene_buffer_addr;
+			for (Entity entity : p_registry.view<Transform, MeshComponent>()) {
+				auto [transform, mc] = p_registry.get_many<Transform, MeshComponent>(entity);
 
-			backend->command_push_constants(cmd, pipeline->shader, 0, sizeof(PushConstants), &pc);
+				transform->rotate(20 * p_dt, VEC3_UP);
 
-			backend->command_draw(cmd, 3);
+				switch (mc->type) {
+					case MeshType::CUBE:
+						PushConstants pc = {};
+						pc.transform = transform->to_mat4();
+						pc.vertex_buffer_addr = cube_mesh->vertex_buffer_address;
+						pc.scene_buffer_addr = scene_buffer_addr;
+
+						backend->command_push_constants(
+								cmd, pipeline->shader, 0, sizeof(PushConstants), &pc);
+
+						backend->command_bind_index_buffer(
+								cmd, cube_mesh->index_buffer, 0, IndexType::UINT32);
+						backend->command_draw_indexed(cmd, 36);
+				}
+			}
 		}
 		backend->command_end_rendering(cmd);
 

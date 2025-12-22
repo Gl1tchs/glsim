@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-from glsim import (
+from pyglsim import (
     World,
     Vec2u,
     GpuContext,
@@ -27,10 +27,13 @@ def main() -> None:
 
     window = None
     if "--headless" not in sys.argv:
-        window = Window(gpu, Vec2u(800, 600), "Hello Glsim")
+        window = Window(gpu, Vec2u(800, 600), "Hello pyglsim")
         world.add_system(RenderingSystem(gpu, window))
 
         subscribe_event(EventType.WINDOW_MINIMIZE, on_window_minimize)
+
+    e = world.spawn()
+    world.add_mesh(e)
 
     last = time.time()
     while True:

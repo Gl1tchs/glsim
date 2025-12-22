@@ -4,26 +4,29 @@
 #extension GL_EXT_buffer_reference : require
 
 struct MeshVertex {
-    vec3 position;
+  vec3 position;
+  float uv_x;
+  vec3 normal;
+  float uv_y;
 };
 
 layout(buffer_reference, std430) readonly buffer VertexBuffer {
-    MeshVertex vertices[];
+  MeshVertex vertices[];
 };
 
 layout(buffer_reference, std430) readonly buffer SceneBuffer {
-    mat4 view_projection;
+  mat4 view_projection;
 };
 
 layout(push_constant, std430) uniform constants {
-    mat4 transform;
-    VertexBuffer vertex_buffer;
-    SceneBuffer scene_buffer;
+  mat4 transform;
+  VertexBuffer vertex_buffer;
+  SceneBuffer scene_buffer;
 }
 u_push_constants;
 
 layout(set = 0, binding = 0) uniform MaterialData {
-    vec4 base_color;
+  vec4 base_color;
 }
 u_material_data;
 

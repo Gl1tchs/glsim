@@ -2,6 +2,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/trampoline_self_life_support.h>
 
+#include "core/components.h"
 #include "core/event_system.h"
 #include "core/gpu_context.h"
 #include "core/input.h"
@@ -139,7 +140,7 @@ void _py_unsubscribe_event(PyEventType p_type) {
 	}
 }
 
-PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
+PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
 	py::class_<Entity>(m, "Entity")
 			.def(py::init<>())
 			// Allow Python to treat Entity like a number (cast to int/long)
@@ -167,7 +168,9 @@ PYBIND11_MODULE(_glsim, m, py::mod_gil_not_used()) {
 			.def(py::init<>())
 			// Bind update method
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
-			.def("add_system", &World::add_system);
+			.def("add_system", &World::add_system)
+			.def("add_mesh",
+					[](World& world, Entity entity) { world.assign<MeshComponent>(entity); });
 
 	py::class_<Vec2u>(m, "Vec2u")
 			.def(py::init<uint32_t, uint32_t>())

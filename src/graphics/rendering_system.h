@@ -8,6 +8,7 @@
 #include "glgpu/vec.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
+#include "graphics/mesh.h"
 #include "graphics/renderer.h"
 #include "graphics/window.h"
 
@@ -52,16 +53,13 @@ private:
 		Color base_color;
 	};
 
-	Buffer vertex_buffer;
-	BufferDeviceAddress vertex_buffer_addr;
-
 	Buffer scene_buffer;
 	BufferDeviceAddress scene_buffer_addr;
 
 	Buffer material_buffer;
 	UniformSet material_set;
 
-	Transform transform;
+	std::shared_ptr<StaticMesh> cube_mesh;
 };
 
 } //namespace gl

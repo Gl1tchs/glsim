@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ._glsim import (
+from ._pyglsim import (
     Entity,
     Registry,
     System,

@@ -168,6 +168,9 @@ class World(Registry):
         """
         ...
 
+    def add_mesh(self, entity: Entity) -> None:
+        ...
+
 
 @dataclass
 class Vec2u:

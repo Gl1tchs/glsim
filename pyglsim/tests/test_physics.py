@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 
-from glsim import GpuContext, Registry, PhysicsSystem
+from pyglsim import GpuContext, Registry, PhysicsSystem
 
 
 class TestPhysicsSystem(unittest.TestCase):

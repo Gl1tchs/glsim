@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 
-from glsim import World, System
+from pyglsim import World, System
 
 
 class MySystem(System):

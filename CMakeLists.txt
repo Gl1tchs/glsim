@@ -5,7 +5,7 @@ project(glsim VERSION 0.1.0)
 # ------------------------------------------------------------------------------
 # Options
 # ------------------------------------------------------------------------------
-option(GL_HEADLESS "Build headless mode" OFF)
+option(GL_BUILD_TESTS "Build tests" ON)
 
 # ------------------------------------------------------------------------------
 # Configuration
@@ -43,37 +43,59 @@ add_subdirectory(external/pybind11)
 add_subdirectory(shaders)
 
 # ------------------------------------------------------------------------------
-# glsim module
+# glsim static library 
 # ------------------------------------------------------------------------------
 file(GLOB_RECURSE SOURCE_FILES "src/*.cpp" "src/*.h")
 
-python_add_library(_glsim MODULE ${SOURCE_FILES} WITH_SOABI)
+add_library(glsim STATIC ${SOURCE_FILES})
 
-target_include_directories(_glsim PRIVATE
+target_include_directories(glsim PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/src/
     ${CMAKE_BINARY_DIR}/include
-    ${CMAKE_CURRENT_LIST_DIR}/external/pybind11/include/
     ${CMAKE_CURRENT_LIST_DIR}/external/glgpu/include/
 )
-target_link_libraries(_glsim PRIVATE glgpu pybind11::headers)
-target_precompile_headers(_glsim PRIVATE src/pch.h)
+
+target_link_libraries(glsim PRIVATE glgpu)
+
+target_precompile_headers(glsim PUBLIC src/pch.h)
 
 # If not headless mode link into SDL2
 if(NOT GL_HEADLESS)
     find_package(SDL2 REQUIRED)
-    target_link_libraries(_glsim PRIVATE SDL2)
+    target_link_libraries(glsim PRIVATE SDL2)
 else()
-    target_compile_definitions(_glsim PRIVATE GL_HEADLESS)
+    target_compile_definitions(glsim PRIVATE GL_HEADLESS)
 endif()
 
+
 # ------------------------------------------------------------------------------
-# Install target
+# Tests
 # ------------------------------------------------------------------------------
+if(GL_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
+
+
+# ------------------------------------------------------------------------------
+# pyglsim 
+# ------------------------------------------------------------------------------
+python_add_library(_pyglsim
+    MODULE
+    ${CMAKE_CURRENT_LIST_DIR}/pyglsim/bindings.cpp
+    WITH_SOABI
+)
+
+target_include_directories(_pyglsim PRIVATE
+    ${glsim_INCLUDE_DIRECTORIES}
+    ${CMAKE_CURRENT_LIST_DIR}/external/pybind11/include/
+)
+
+target_link_libraries(_pyglsim PRIVATE glsim pybind11::headers)
 
 # We tell CMake to output the binaries directly into the Python package folder
-set_target_properties(_glsim PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/glsim"
+set_target_properties(_pyglsim PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pyglsim"
 )
 
 # The install directory is the output (wheel) directory
-install(TARGETS _glsim DESTINATION "glsim")
+install(TARGETS _pyglsim DESTINATION "pyglsim")

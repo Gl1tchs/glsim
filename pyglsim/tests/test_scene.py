@@ -1,6 +1,6 @@
 import unittest
 
-from glsim import Registry, Entity
+from pyglsim import Registry, Entity
 
 
 class TestScene(unittest.TestCase):
