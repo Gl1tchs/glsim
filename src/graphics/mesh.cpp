@@ -3,7 +3,6 @@
 namespace gl {
 
 StaticMesh::~StaticMesh() {
-	backend->device_wait();
 	backend->buffer_free(vertex_buffer);
 	backend->buffer_free(index_buffer);
 }

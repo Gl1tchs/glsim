@@ -12,6 +12,54 @@
 
 namespace gl {
 
+std::vector<MeshVertex> vertices = {
+	// Position           uv_x   Normal              uv_y
+	// Front face (Z = 1)
+	{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 0
+	{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 1
+	{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 2
+	{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 3
+
+	// Back face (Z = -1)
+	{ { -0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 4
+	{ { -0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 5
+	{ { 0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 6
+	{ { 0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 7
+
+	// Top face (Y = 1)
+	{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 8
+	{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 9
+	{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 10
+	{ { -0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 11
+
+	// Bottom face (Y = -1)
+	{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 12
+	{ { -0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 13
+	{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 14
+	{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 15
+
+	// Right face (X = 1)
+	{ { 0.5f, -0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 16
+	{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 17
+	{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 18
+	{ { 0.5f, 0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 19
+
+	// Left face (X = -1)
+	{ { -0.5f, -0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 0.0f }, // 20
+	{ { -0.5f, 0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 21
+	{ { -0.5f, 0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 22
+	{ { -0.5f, -0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 0.0f } // 23
+};
+
+std::vector<uint32_t> indices = {
+	0, 1, 2, 0, 2, 3, // Front
+	4, 5, 6, 4, 6, 7, // Back
+	8, 9, 10, 8, 10, 11, // Top
+	12, 13, 14, 12, 14, 15, // Bottom
+	16, 17, 18, 16, 18, 19, // Right
+	20, 21, 22, 20, 22, 23 // Left
+};
+
 RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_window) :
 		backend(p_ctx.get_backend()),
 		window(p_window),
@@ -24,57 +72,7 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 	};
 	pipeline = std::make_unique<GraphicsPipeline>(p_ctx, create_info);
 
-	{
-		std::vector<MeshVertex> vertices = {
-			// Position           uv_x   Normal              uv_y
-			// Front face (Z = 1)
-			{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 0
-			{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 1
-			{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 2
-			{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 3
-
-			// Back face (Z = -1)
-			{ { -0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 4
-			{ { -0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 5
-			{ { 0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 6
-			{ { 0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 7
-
-			// Top face (Y = 1)
-			{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 8
-			{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 9
-			{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 10
-			{ { -0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 11
-
-			// Bottom face (Y = -1)
-			{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 12
-			{ { -0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 13
-			{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 14
-			{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 15
-
-			// Right face (X = 1)
-			{ { 0.5f, -0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 16
-			{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 17
-			{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 18
-			{ { 0.5f, 0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 19
-
-			// Left face (X = -1)
-			{ { -0.5f, -0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 0.0f }, // 20
-			{ { -0.5f, 0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 21
-			{ { -0.5f, 0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 22
-			{ { -0.5f, -0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 0.0f } // 23
-		};
-
-		std::vector<uint32_t> indices = {
-			0, 1, 2, 0, 2, 3, // Front
-			4, 5, 6, 4, 6, 7, // Back
-			8, 9, 10, 8, 10, 11, // Top
-			12, 13, 14, 12, 14, 15, // Bottom
-			16, 17, 18, 16, 18, 19, // Right
-			20, 21, 22, 20, 22, 23 // Left
-		};
-
-		cube_mesh = StaticMesh::create(backend, vertices, indices);
-	}
+	cube_mesh = StaticMesh::create(backend, vertices, indices);
 
 	{
 		scene_buffer = backend->buffer_create(sizeof(SceneData),
@@ -115,11 +113,11 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 
 RenderingSystem::~RenderingSystem() {
 	backend->device_wait();
+
 	backend->uniform_set_free(material_set);
 	backend->buffer_free(material_buffer);
-	backend->buffer_free(scene_buffer);
 
-	cube_mesh.reset();
+	backend->buffer_free(scene_buffer);
 }
 
 void RenderingSystem::on_init(Registry& p_registry) {
@@ -144,33 +142,8 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 	// Begin frame
 	CommandBuffer cmd = renderer->begin_frame(target_image);
 	{
-		// Calculate a color based on time
-		static float s_time = 0.0f;
-		s_time += p_dt;
-
-		const Color color(std::abs(sin(s_time)), std::abs(cos(s_time)), 0.2f, 1.0f);
-
-		{
-			MaterialData* data = (MaterialData*)backend->buffer_map(material_buffer);
-			{
-				data->base_color = color;
-			}
-			backend->buffer_unmap(material_buffer);
-		}
-
-		{
-			const Vec3u size = backend->image_get_size(target_image);
-
-			// Update aspect ratio
-			camera.aspect_ratio = size.y / (float)size.x;
-
-			SceneData* data = (SceneData*)backend->buffer_map(scene_buffer);
-			{
-				data->viewproj =
-						camera.get_projection_matrix() * camera.get_view_matrix(camera_transform);
-			}
-			backend->buffer_unmap(scene_buffer);
-		}
+		// Prepare scene and material resources
+		_prepare_resources(p_registry, target_image);
 
 		RenderingAttachment attachment = {};
 		attachment.image = target_image;
@@ -181,33 +154,15 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 
 		backend->command_begin_rendering(
 				cmd, backend->image_get_size(target_image), { attachment });
-		{
-			backend->command_bind_graphics_pipeline(cmd, pipeline->pipeline);
 
-			backend->command_bind_uniform_sets(cmd, pipeline->shader, 0, { material_set });
+		// Bind cube pipeline (this is the only one existing at the moment)
+		backend->command_bind_graphics_pipeline(cmd, pipeline->pipeline);
 
-			for (Entity entity : p_registry.view<Transform, MeshComponent>()) {
-				auto [transform, mc] = p_registry.get_many<Transform, MeshComponent>(entity);
+		// Bind scene buffer
+		backend->command_bind_uniform_sets(cmd, pipeline->shader, 0, { material_set });
 
-				// TODO: remove this
-				transform->rotate(20 * p_dt, VEC3_UP);
+		_geometry_pass(cmd, p_registry, p_dt);
 
-				switch (mc->type) {
-					case MeshType::CUBE:
-						PushConstants pc = {};
-						pc.transform = transform->to_mat4();
-						pc.vertex_buffer_addr = cube_mesh->vertex_buffer_address;
-						pc.scene_buffer_addr = scene_buffer_addr;
-
-						backend->command_push_constants(
-								cmd, pipeline->shader, 0, sizeof(PushConstants), &pc);
-
-						backend->command_bind_index_buffer(
-								cmd, cube_mesh->index_buffer, 0, IndexType::UINT32);
-						backend->command_draw_indexed(cmd, cube_mesh->index_count);
-				}
-			}
-		}
 		backend->command_end_rendering(cmd);
 
 		// Transition Image Layout for Presentation
@@ -220,6 +175,55 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 	// Present the image to the screen
 	// Waits for 'render_finished_semaphore'
 	window->present(signal_sem);
+}
+
+void RenderingSystem::_prepare_resources(Registry& p_registry, Image p_target_image) {
+	{
+		MaterialData* data = (MaterialData*)backend->buffer_map(material_buffer);
+		{
+			data->base_color = COLOR_MAGENTA;
+		}
+		backend->buffer_unmap(material_buffer);
+	}
+
+	{
+		const Vec3u size = backend->image_get_size(p_target_image);
+
+		// Update aspect ratio
+		camera.aspect_ratio = size.y / (float)size.x;
+
+		SceneData* data = (SceneData*)backend->buffer_map(scene_buffer);
+		{
+			data->viewproj =
+					camera.get_projection_matrix() * camera.get_view_matrix(camera_transform);
+		}
+		backend->buffer_unmap(scene_buffer);
+	}
+}
+
+void RenderingSystem::_geometry_pass(CommandBuffer p_cmd, Registry& p_registry, float p_dt) {
+	for (Entity entity : p_registry.view<Transform, MeshComponent>()) {
+		auto [transform, mc] = p_registry.get_many<Transform, MeshComponent>(entity);
+
+		// TODO: remove this
+		transform->rotate(20 * p_dt, VEC3_UP);
+
+		switch (mc->type) {
+			case MeshType::CUBE:
+				PushConstants pc = {};
+				pc.transform = transform->to_mat4();
+				pc.vertex_buffer_addr = cube_mesh->vertex_buffer_address;
+				pc.scene_buffer_addr = scene_buffer_addr;
+
+				backend->command_push_constants(
+						p_cmd, pipeline->shader, 0, sizeof(PushConstants), &pc);
+
+				backend->command_bind_index_buffer(
+						p_cmd, cube_mesh->index_buffer, 0, IndexType::UINT32);
+				backend->command_draw_indexed(p_cmd, cube_mesh->index_count);
+				break;
+		}
+	}
 }
 
 } //namespace gl

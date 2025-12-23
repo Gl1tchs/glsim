@@ -30,6 +30,11 @@ public:
 	void on_destroy(Registry& p_registry) override;
 
 private:
+	void _prepare_resources(Registry& p_registry, Image p_target_image);
+
+	void _geometry_pass(CommandBuffer p_cmd, Registry& p_registry, float p_dt);
+
+private:
 	std::shared_ptr<RenderBackend> backend;
 	std::shared_ptr<Window> window;
 	std::unique_ptr<Renderer> renderer;
