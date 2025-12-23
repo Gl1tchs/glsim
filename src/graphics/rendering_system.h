@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/components.h"
 #include "core/gpu_context.h"
 #include "core/system.h"
 #include "core/transform.h"
@@ -7,7 +8,6 @@
 #include "glgpu/color.h"
 #include "glgpu/mat.h"
 #include "glgpu/types.h"
-#include "glgpu/vec.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
 #include "graphics/mesh.h"
@@ -30,9 +30,36 @@ public:
 	void on_destroy(Registry& p_registry) override;
 
 private:
-	void _prepare_resources(Registry& p_registry, Image p_target_image);
+	// Render Passes
 
-	void _geometry_pass(CommandBuffer p_cmd, Registry& p_registry, float p_dt);
+	struct FrameContext {
+		CommandBuffer cmd;
+		Image target_image;
+		float dt;
+	};
+
+	void _execute_geometry_pass(const FrameContext& p_ctx, Registry& p_registry);
+
+private:
+	// Initialization helpers
+
+	void _init_pipelines(GpuContext& p_ctx);
+
+	void _init_primitives();
+
+	void _init_scene_buffer();
+
+	void _init_material_buffer();
+
+	// Update helpers
+
+	void _update_scene_uniforms(Registry& p_registry, Image p_target_image);
+
+	void _update_material_uniforms();
+
+	RenderingAttachment _create_color_attachment(Image p_target);
+
+	std::shared_ptr<StaticMesh> _resolve_mesh(PrimitiveType p_type);
 
 private:
 	std::shared_ptr<RenderBackend> backend;
@@ -41,10 +68,6 @@ private:
 
 	// Scene data
 	std::unique_ptr<GraphicsPipeline> pipeline; // unlit pipeline
-
-	struct Vertex {
-		Vec4f position;
-	};
 
 	struct SceneData {
 		Mat4 viewproj;
@@ -65,9 +88,6 @@ private:
 
 	Buffer material_buffer;
 	UniformSet material_set;
-
-	PerspectiveCamera camera;
-	Transform camera_transform;
 
 	struct {
 		std::shared_ptr<StaticMesh> cube;

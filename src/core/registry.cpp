@@ -13,15 +13,17 @@ size_t ComponentPool::get_component_count() const {
 
 size_t ComponentPool::get_size() const { return element_size; }
 
-void* ComponentPool::get(size_t index) { return data.data() + (index * element_size); }
+void* ComponentPool::get(size_t p_idx) { return data.data() + (p_idx * element_size); }
 
-void* ComponentPool::_add(void* p_data) {
-	const size_t old_byte_size = data.size();
+void* ComponentPool::_add(uint32_t p_idx, void* p_data) {
+	const size_t insert_pos = p_idx * element_size;
+	const size_t required_size = insert_pos + element_size;
+	if (data.size() < required_size) {
+		// allocate more space
+		data.resize(required_size);
+	}
 
-	data.resize(old_byte_size + element_size);
-
-	uint8_t* destination = data.data() + old_byte_size;
-
+	uint8_t* destination = data.data() + insert_pos;
 	std::memcpy(destination, p_data, element_size);
 
 	return destination;
@@ -30,7 +32,7 @@ void* ComponentPool::_add(void* p_data) {
 Registry::~Registry() { clear(); }
 
 void Registry::clear() {
-	// delete the pools
+	// Delete the pools
 	for (ComponentPool* pool : component_pools) {
 		delete pool;
 	}

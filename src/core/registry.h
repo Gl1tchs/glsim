@@ -53,12 +53,12 @@ public:
 
 	size_t get_size() const;
 
-	void* get(size_t p_index);
+	void* get(size_t p_idx);
 
-	template <std::default_initializable T> T* add();
+	template <std::default_initializable T> T* add(uint32_t p_idx);
 
 private:
-	void* _add(void* p_data);
+	void* _add(uint32_t p_idx, void* p_data);
 
 private:
 	std::vector<uint8_t> data;

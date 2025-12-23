@@ -34,11 +34,19 @@ def main() -> None:
 
         subscribe_event(EventType.WINDOW_MINIMIZE, on_window_minimize)
 
+    # Setup camera
+    c = world.spawn()
+
+    world.get_transform(c).position.z = 5
+    world.get_camera(c)
+
+    # Create a cube
     e = world.spawn()
-    world.add_mesh(e, PrimitiveType.PLANE)
+
+    mc = world.get_mesh(e)
+    mc.primitive_type = PrimitiveType.SPHERE
 
     t = world.get_transform(e)
-    t.rotate(90.0, Vec3f(1.0, 0.0, 0.0))
 
     last = time.time()
     while True:
@@ -53,6 +61,9 @@ def main() -> None:
 
             if Input.is_key_pressed(KeyCode.SPACE):
                 print("Hello World")
+
+        t.rotate(20 * dt, Vec3f(0, 1, 0))
+        t.rotate(30 * dt, Vec3f(1, 0, 0))
 
         world.update(dt)
 

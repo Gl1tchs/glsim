@@ -1,6 +1,8 @@
 #include <pybind11/native_enum.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/trampoline_self_life_support.h>
+#include <cstdint>
+#include <stdexcept>
 
 #include "core/components.h"
 #include "core/event_system.h"
@@ -12,6 +14,7 @@
 #include "core/transform.h"
 #include "core/world.h"
 #include "glgpu/vec.h"
+#include "graphics/camera.h"
 #include "graphics/rendering_system.h"
 #include "graphics/window.h"
 #include "physics/physics_system.h"
@@ -169,24 +172,127 @@ static void _bind_math(py::module_& m) {
 			.def("length", &Vec3f::length);
 }
 
+class PyTransformProxy {
+public:
+	PyTransformProxy(Registry& p_registry, Entity p_entity, bool p_should_assign = false) :
+			registry(&p_registry), entity(p_entity) {
+		if (!registry->has<Transform>(entity)) {
+			if (p_should_assign) {
+				registry->assign<Transform>(entity);
+			} else {
+				throw std::runtime_error(std::format(
+						"Entity with id {} does not own a TransformComponent", (uint32_t)p_entity));
+			}
+		}
+	}
+
+	const Vec3f& get_position() { return registry->get<Transform>(entity)->position; }
+	void set_position(const Vec3f& p_position) {
+		registry->get<Transform>(entity)->position = p_position;
+	}
+
+	const Vec3f& get_rotation() { return registry->get<Transform>(entity)->rotation; }
+	void set_rotation(const Vec3f& p_rotation) {
+		registry->get<Transform>(entity)->rotation = p_rotation;
+	}
+
+	const Vec3f& get_scale() { return registry->get<Transform>(entity)->scale; }
+	void set_scale(const Vec3f& p_scale) { registry->get<Transform>(entity)->scale = p_scale; }
+
+	void translate(const Vec3f& p_translation) {
+		registry->get<Transform>(entity)->translate(p_translation);
+	}
+
+	void rotate(float p_angle, const Vec3f& p_axis) {
+		registry->get<Transform>(entity)->rotate(p_angle, p_axis);
+	}
+
+	Vec3f get_forward() { return registry->get<Transform>(entity)->get_forward(); }
+	Vec3f get_right() { return registry->get<Transform>(entity)->get_right(); }
+	Vec3f get_up() { return registry->get<Transform>(entity)->get_up(); }
+
+private:
+	Registry* registry;
+	Entity entity;
+};
+
+class PyMeshProxy {
+public:
+	PyMeshProxy(Registry& p_registry, Entity p_entity, bool p_should_assign = false) :
+			registry(&p_registry), entity(p_entity) {
+		if (!registry->has<MeshComponent>(entity)) {
+			if (p_should_assign) {
+				registry->assign<MeshComponent>(entity);
+			} else {
+				throw std::runtime_error(std::format(
+						"Entity with id {} does not own a MeshComponent", (uint32_t)p_entity));
+			}
+		}
+	}
+
+	const PrimitiveType& get_primitive_type() { return registry->get<MeshComponent>(entity)->type; }
+
+	void set_primitive_type(const PrimitiveType& p_type) {
+		registry->get<MeshComponent>(entity)->type = p_type;
+	}
+
+private:
+	Registry* registry;
+	Entity entity;
+};
+
+class PyCameraProxy {
+public:
+	PyCameraProxy(Registry& p_registry, Entity p_entity, bool p_should_assign = false) :
+			registry(&p_registry), entity(p_entity) {
+		if (!registry->has<CameraComponent>(entity)) {
+			if (p_should_assign) {
+				registry->assign<CameraComponent>(entity);
+			} else {
+				throw std::runtime_error(std::format(
+						"Entity with id {} does not own a CameraComponent", (uint32_t)p_entity));
+			}
+		}
+	}
+
+private:
+	Registry* registry;
+	Entity entity;
+};
+
 static void _bind_components(py::module_& m) {
-	py::native_enum<PrimitiveType>(m, "PrimitiveType", "enum.IntEnum")
+	py::class_<PyTransformProxy>(m, "Transform")
+			.def(py::init<Registry&, Entity, bool>())
+			.def_property(
+					"position", &PyTransformProxy::get_position, &PyTransformProxy::set_position)
+			.def_property(
+					"rotation", &PyTransformProxy::get_rotation, &PyTransformProxy::set_rotation)
+			.def_property("scale", &PyTransformProxy::get_scale, &PyTransformProxy::set_scale)
+			.def("translate", &PyTransformProxy::translate)
+			.def("rotate", &PyTransformProxy::rotate)
+			.def("get_forward", &PyTransformProxy::get_forward)
+			.def("get_right", &PyTransformProxy::get_right)
+			.def("get_up", &PyTransformProxy::get_up);
+
+	py::native_enum<PrimitiveType>(m, "PrimitiveType", "enum.Enum")
 			.value("CUBE", PrimitiveType::CUBE)
 			.value("PLANE", PrimitiveType::PLANE)
 			.value("SPHERE", PrimitiveType::SPHERE)
 			.export_values()
 			.finalize();
 
-	py::class_<Transform>(m, "Transform")
-			.def(py::init())
-			.def_readwrite("position", &Transform::position)
-			.def_readwrite("rotation", &Transform::rotation)
-			.def_readwrite("scale", &Transform::scale)
-			.def("translate", &Transform::translate)
-			.def("rotate", &Transform::rotate)
-			.def("get_forward", &Transform::get_forward)
-			.def("get_right", &Transform::get_right)
-			.def("get_up", &Transform::get_up);
+	py::class_<PyMeshProxy>(m, "MeshComponent")
+			.def(py::init<Registry&, Entity, bool>())
+			.def_property("primitive_type", &PyMeshProxy::get_primitive_type,
+					&PyMeshProxy::set_primitive_type);
+
+	py::native_enum<CameraProjection>(m, "CameraProjection", "enum.IntEnum")
+			.value("ORTHOGRAPHIC", CameraProjection::ORTHOGRAPHIC)
+			.value("PERSPECTIVE", CameraProjection::PERSPECTIVE)
+			.export_values()
+			.finalize();
+
+	py::class_<PyCameraProxy>(m, "CameraComponent").def(py::init<Registry&, Entity, bool>());
 }
 
 static void _bind_ecs(py::module_& m) {
@@ -215,18 +321,22 @@ static void _bind_ecs(py::module_& m) {
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
 			.def("add_system", &World::add_system)
 			.def("get_transform",
+					[](World& self, Entity entity) { return PyTransformProxy(self, entity, true); })
+			.def("get_camera",
 					[](World& self, Entity entity) {
-						if (Transform* transform = self.get<Transform>(entity)) {
-							return transform;
+						// Camera must have a transform
+						if (!self.has<Transform>(entity)) {
+							self.assign<Transform>(entity);
 						}
-						return self.assign<Transform>(entity);
+
+						return PyCameraProxy(self, entity, true);
 					})
-			.def("add_mesh", [](World& self, Entity entity, PrimitiveType type) {
+			.def("get_mesh", [](World& self, Entity entity) {
 				if (!self.has<Transform>(entity)) {
 					self.assign<Transform>(entity);
 				}
-				MeshComponent* mc = self.assign<MeshComponent>(entity);
-				mc->type = type;
+
+				return PyMeshProxy(self, entity, true);
 			});
 }
 

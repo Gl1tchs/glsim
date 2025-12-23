@@ -136,23 +136,18 @@ class System:
         """
         ...
 
-
 @dataclass
 class Vec2u:
     x: int
     y: int
-
 
 @dataclass
 class Vec2f:
     x: float
     y: float
 
-    def dot(self) -> float:
-        ...
-
-    def length(self) -> float:
-        ...
+    def dot(self) -> float: ...
+    def length(self) -> float: ...
 
 @dataclass
 class Vec3u:
@@ -160,63 +155,52 @@ class Vec3u:
     y: int
     z: int
 
-
 @dataclass
 class Vec3f:
     x: float
     y: float
     z: float
 
-    def dot(self) -> float:
-        ...
+    def dot(self) -> float: ...
+    def cross(self) -> Vec3f: ...
+    def length(self) -> float: ...
 
-    def cross(self) -> Vec3f:
-        ...
+class Transform:
+    def __init__(
+        self, registry: Registry, entity: EntityID, should_assign: bool
+    ) -> None: ...
+    @property
+    def position(self) -> Vec3f: ...
+    @property
+    def rotation(self) -> Vec3f: ...
+    @property
+    def scale(self) -> Vec3f: ...
+    def translate(self, translation: Vec3f) -> None: ...
+    def rotate(self, angle: float, axis: Vec3f) -> None: ...
+    def get_forward(self) -> Vec3f: ...
+    def get_right(self) -> Vec3f: ...
+    def get_up(self) -> Vec3f: ...
 
-    def length(self) -> float:
-        ...
-
-class PrimitiveType(IntEnum):
+class PrimitiveType(Enum):
     CUBE = 0
     PLANE = 1
     SPHERE = 2
 
-class Transform:
-    position: Vec3f
-    rotation: Vec3f
-    scale: Vec3f
+class MeshComponent:
+    def __init__(
+        self, registry: Registry, entity: EntityID, should_assign: bool
+    ) -> None: ...
+    @property
+    def primitive_type(self) -> PrimitiveType: ...
 
-    def __init__(self) -> None: ...
+class CameraProjection(IntEnum):
+    ORTHOGRAPHIC = 0
+    PERSPECTIVE = 1
 
-    def translate(self, translation: Vec3f) -> None:
-        """
-        Translate the transform by given translation
-        """
-        ...
-
-    def rotate(self, angle: float, axis: Vec3f) -> None:
-        """
-        Rotate transform by given eular angles
-        """
-        ...
-
-    def get_forward(self) -> Vec3f:
-        """
-        Get forward vector
-        """
-        ...
-
-    def get_right(self) -> Vec3f:
-        """
-        Get right vector
-        """
-        ...
-    
-    def get_up(self) -> Vec3f:
-        """
-        Get up vector
-        """
-        ...
+class CameraComponent:
+    def __init__(
+        self, registry: Registry, entity: EntityID, should_assign: bool
+    ) -> None: ...
 
 class World(Registry):
     """
@@ -251,19 +235,24 @@ class World(Registry):
     def get_transform(self, entity: EntityID) -> Transform:
         """
         Get transform component of an entity
-        
+
         Args:
             entity: Owner of the transform component
         """
         ...
 
-    def add_mesh(self, entity: EntityID, prim: PrimitiveType = PrimitiveType.CUBE) -> None:
+    def get_camera(self, entity: EntityID) -> CameraComponent:
+        """
+        Get camera component of an entity
+        """
+        ...
+
+    def get_mesh(self, entity: EntityID) -> MeshComponent:
         """
         Adds mesh component to the given entity.
 
         Args:
             entity: Entity to add component to
-            prim: Type of the mesh being added
         """
         ...
 

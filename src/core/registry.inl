@@ -6,11 +6,12 @@
 
 namespace gl {
 
-template <std::default_initializable T> T* ComponentPool::add() {
+template <std::default_initializable T> T* ComponentPool::add(uint32_t p_idx) {
 	GL_ASSERT(sizeof(T) == element_size, "Given template argument T does not match element_size");
 
 	T comp;
-	return (T*)_add(&comp);
+
+	return (T*)_add(p_idx, &comp);
 }
 
 template <typename T> T* Registry::assign(Entity p_entity) {
@@ -29,7 +30,7 @@ template <typename T> T* Registry::assign(Entity p_entity) {
 	}
 
 	// Bookkeep
-	T* component = component_pools[component_id]->add<T>();
+	T* component = component_pools[component_id]->add<T>(get_entity_index(p_entity));
 
 	entities[get_entity_index(p_entity)].mask.set(component_id);
 
@@ -73,8 +74,9 @@ template <typename T> T* Registry::get(Entity p_entity) {
 		return nullptr;
 	}
 
-	T* component = static_cast<T*>(component_pools[component_id]->get(get_entity_index(p_entity)));
+	const uint32_t entity_idx = get_entity_index(p_entity);
 
+	T* component = static_cast<T*>(component_pools[component_id]->get(entity_idx));
 	return component;
 }
 
