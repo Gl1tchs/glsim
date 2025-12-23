@@ -15,7 +15,7 @@ size_t ComponentPool::get_size() const { return element_size; }
 
 void* ComponentPool::get(size_t index) { return data.data() + (index * element_size); }
 
-void* ComponentPool::add(void* p_data) {
+void* ComponentPool::_add(void* p_data) {
 	const size_t old_byte_size = data.size();
 
 	data.resize(old_byte_size + element_size);

@@ -9,6 +9,7 @@
 #include "core/log.h"
 #include "core/registry.h"
 #include "core/system.h"
+#include "core/transform.h"
 #include "core/world.h"
 #include "glgpu/vec.h"
 #include "graphics/rendering_system.h"
@@ -19,8 +20,7 @@ namespace gl {
 
 namespace py = pybind11;
 
-// Trampoline class for System
-// This allows Python classes to inherit from System and override virtual methods.
+// Trampoline for System to allow Python overriding
 class PySystem : public System, public py::trampoline_self_life_support {
 public:
 	using System::System;
@@ -28,16 +28,15 @@ public:
 	void on_init(Registry& p_registry) override {
 		PYBIND11_OVERRIDE(void, System, on_init, p_registry);
 	}
-
 	void on_update(Registry& p_registry, float p_dt) override {
 		PYBIND11_OVERRIDE(void, System, on_update, p_registry, p_dt);
 	}
-
 	void on_destroy(Registry& p_registry) override {
 		PYBIND11_OVERRIDE(void, System, on_destroy, p_registry);
 	}
 };
 
+// Internal Event Enum for Python mapping
 enum class PyEventType {
 	WINDOW_RESIZE,
 	WINDOW_CLOSE,
@@ -51,18 +50,17 @@ enum class PyEventType {
 	MOUSE_RELEASE,
 };
 
+// Helper logic for Event Subscription (GIL management)
 void _py_subscribe_event(PyEventType p_type, py::object p_func) {
 	py::gil_scoped_acquire acquire;
 
-	if (!p_func) {
+	if (!p_func)
 		return;
-	}
 
 	auto py_callback = std::make_shared<py::object>(std::move(p_func));
 
 	auto cxx_wrapper = [py_callback](const auto& event_data) {
-		py::gil_scoped_release release;
-
+		py::gil_scoped_release release; // Release GIL before calling back into Python
 		if (*py_callback) {
 			py::gil_scoped_acquire acquire_again;
 			try {
@@ -82,6 +80,7 @@ void _py_subscribe_event(PyEventType p_type, py::object p_func) {
 			break;
 		case PyEventType::WINDOW_MINIMIZE:
 			event::subscribe<WindowMinimizeEvent>(cxx_wrapper);
+			break;
 		case PyEventType::KEY_PRESS:
 			event::subscribe<KeyPressEvent>(cxx_wrapper);
 			break;
@@ -116,6 +115,7 @@ void _py_unsubscribe_event(PyEventType p_type) {
 			break;
 		case PyEventType::WINDOW_MINIMIZE:
 			event::unsubscribe<WindowMinimizeEvent>();
+			break;
 		case PyEventType::KEY_PRESS:
 			event::unsubscribe<KeyPressEvent>();
 			break;
@@ -140,12 +140,59 @@ void _py_unsubscribe_event(PyEventType p_type) {
 	}
 }
 
-PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
+static void _bind_math(py::module_& m) {
+	py::class_<Vec2u>(m, "Vec2u")
+			.def(py::init<uint32_t, uint32_t>())
+			.def_readwrite("x", &Vec2u::x)
+			.def_readwrite("y", &Vec2u::y);
+
+	py::class_<Vec2f>(m, "Vec2f")
+			.def(py::init<float, float>())
+			.def_readwrite("x", &Vec2f::x)
+			.def_readwrite("y", &Vec2f::y)
+			.def("dot", &Vec2f::dot)
+			.def("length", &Vec2f::length);
+
+	py::class_<Vec3u>(m, "Vec3u")
+			.def(py::init<uint32_t, uint32_t, uint32_t>())
+			.def_readwrite("x", &Vec3u::x)
+			.def_readwrite("y", &Vec3u::y)
+			.def_readwrite("z", &Vec3u::z);
+
+	py::class_<Vec3f>(m, "Vec3f")
+			.def(py::init<float, float, float>())
+			.def_readwrite("x", &Vec3f::x)
+			.def_readwrite("y", &Vec3f::y)
+			.def_readwrite("z", &Vec3f::z)
+			.def("dot", &Vec3f::dot)
+			.def("cross", &Vec3f::cross)
+			.def("length", &Vec3f::length);
+}
+
+static void _bind_components(py::module_& m) {
+	py::native_enum<PrimitiveType>(m, "PrimitiveType", "enum.IntEnum")
+			.value("CUBE", PrimitiveType::CUBE)
+			.value("PLANE", PrimitiveType::PLANE)
+			.value("SPHERE", PrimitiveType::SPHERE)
+			.export_values()
+			.finalize();
+
+	py::class_<Transform>(m, "Transform")
+			.def(py::init())
+			.def_readwrite("position", &Transform::position)
+			.def_readwrite("rotation", &Transform::rotation)
+			.def_readwrite("scale", &Transform::scale)
+			.def("translate", &Transform::translate)
+			.def("rotate", &Transform::rotate)
+			.def("get_forward", &Transform::get_forward)
+			.def("get_right", &Transform::get_right)
+			.def("get_up", &Transform::get_up);
+}
+
+static void _bind_ecs(py::module_& m) {
 	py::class_<Entity>(m, "Entity")
 			.def(py::init<>())
-			// Allow Python to treat Entity like a number (cast to int/long)
 			.def("__int__", [](const Entity& e) { return (uint64_t)e; })
-			// Expose utility functions
 			.def_static("create_id", &create_entity_id)
 			.def_static("get_index", &get_entity_index)
 			.def_static("get_version", &get_entity_version);
@@ -163,27 +210,27 @@ PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
 			.def("on_update", &System::on_update)
 			.def("on_destroy", &System::on_destroy);
 
-	// Expose the world
 	py::class_<World, Registry>(m, "World")
 			.def(py::init<>())
-			// Bind update method
 			.def("update", &World::update, py::arg("p_dt") = 0.016f)
 			.def("add_system", &World::add_system)
-			.def("add_mesh", [](World& self, Entity entity) {
-				self.assign<Transform>(entity);
-				self.assign<MeshComponent>(entity);
+			.def("get_transform",
+					[](World& self, Entity entity) {
+						if (Transform* transform = self.get<Transform>(entity)) {
+							return transform;
+						}
+						return self.assign<Transform>(entity);
+					})
+			.def("add_mesh", [](World& self, Entity entity, PrimitiveType type) {
+				if (!self.has<Transform>(entity)) {
+					self.assign<Transform>(entity);
+				}
+				MeshComponent* mc = self.assign<MeshComponent>(entity);
+				mc->type = type;
 			});
+}
 
-	py::class_<Vec2u>(m, "Vec2u")
-			.def(py::init<uint32_t, uint32_t>())
-			.def_readwrite("x", &Vec2u::x)
-			.def_readwrite("y", &Vec2u::y);
-
-	py::class_<Vec2f>(m, "Vec2f")
-			.def(py::init<float, float>())
-			.def_readwrite("x", &Vec2f::x)
-			.def_readwrite("y", &Vec2f::y);
-
+static void _bind_systems(py::module_& m) {
 	py::class_<GpuContext>(m, "GpuContext").def(py::init<>());
 
 	py::class_<Window, py::smart_holder>(m, "Window")
@@ -192,15 +239,73 @@ PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
 			.def("get_size", &Window::get_size)
 			.def("poll_events", &Window::poll_events);
 
+	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem")
+			.def(py::init<GpuContext&, std::shared_ptr<Window>>());
+
+	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem")
+			.def(py::init<GpuContext&>());
+}
+
+static void _bind_input(py::module_& m) {
+	// Event structures
+	py::class_<WindowResizeEvent>(m, "WindowResizeEvent")
+			.def_readwrite("size", &WindowResizeEvent::size);
+	py::class_<WindowMinimizeEvent>(m, "WindowMinimizeEvent").def(py::init<>());
+	py::class_<WindowCloseEvent>(m, "WindowCloseEvent").def(py::init<>());
+	py::class_<KeyPressEvent>(m, "KeyPressEvent")
+			.def_readwrite("key_code", &KeyPressEvent::key_code);
+	py::class_<KeyReleaseEvent>(m, "KeyReleaseEvent")
+			.def_readwrite("key_code", &KeyReleaseEvent::key_code);
+	py::class_<KeyTypeEvent>(m, "KeyTypeEvent").def_readwrite("text", &KeyTypeEvent::text);
+	py::class_<MouseMoveEvent>(m, "MouseMoveEvent")
+			.def_readwrite("position", &MouseMoveEvent::position);
+	py::class_<MouseScrollEvent>(m, "MouseScrollEvent")
+			.def_readwrite("offset", &MouseScrollEvent::offset);
+	py::class_<MousePressEvent>(m, "MousePressEvent")
+			.def_readwrite("button_code", &MousePressEvent::button_code);
+	py::class_<MouseReleaseEvent>(m, "MouseReleaseEvent")
+			.def_readwrite("button_code", &MouseReleaseEvent::button_code);
+
+	// Event Subscriptions
+	py::native_enum<PyEventType>(m, "EventType", "enum.Enum")
+			.value("WINDOW_RESIZE", PyEventType::WINDOW_RESIZE)
+			.value("WINDOW_MINIMIZE", PyEventType::WINDOW_MINIMIZE)
+			.value("WINDOW_CLOSE", PyEventType::WINDOW_CLOSE)
+			.value("KEY_PRESS", PyEventType::KEY_PRESS)
+			.value("KEY_RELEASE", PyEventType::KEY_RELEASE)
+			.value("KEY_TYPE", PyEventType::KEY_TYPE)
+			.value("MOUSE_MOVE", PyEventType::MOUSE_MOVE)
+			.value("MOUSE_SCROLL", PyEventType::MOUSE_SCROLL)
+			.value("MOUSE_PRESS", PyEventType::MOUSE_PRESS)
+			.value("MOUSE_RELEASE", PyEventType::MOUSE_RELEASE)
+			.export_values()
+			.finalize();
+
 	m.def("subscribe_event", &_py_subscribe_event);
 	m.def("unsubscribe_event", &_py_unsubscribe_event);
 
-	py::class_<RenderingSystem, System, py::smart_holder>(m, "RenderingSystem")
-			.def(py::init<GpuContext&, std::shared_ptr<Window>>());
-	// TODO: headless .def(py::init<GpuContext&, Image>);
-	py::class_<PhysicsSystem, System, py::smart_holder>(m, "PhysicsSystem")
-			.def(py::init<GpuContext&>());
+	// Input Static Class
+	py::class_<Input>(m, "Input")
+			.def_static("init", &Input::init)
+			.def_static("is_key_pressed_once", &Input::is_key_pressed_once)
+			.def_static("is_key_pressed", &Input::is_key_pressed)
+			.def_static("is_key_released", &Input::is_key_released)
+			.def_static("is_mouse_pressed", &Input::is_mouse_pressed)
+			.def_static("is_mouse_released", &Input::is_mouse_released)
+			.def_static("get_mouse_position", &Input::get_mouse_position)
+			.def_static("get_scroll_offset", &Input::get_scroll_offset);
 
+	// Enums
+	py::native_enum<MouseButton>(m, "MouseButton", "enum.IntEnum")
+			.value("LEFT", MouseButton::LEFT)
+			.value("MIDDLE", MouseButton::MIDDLE)
+			.value("RIGHT", MouseButton::RIGHT)
+			.value("X1", MouseButton::X1)
+			.value("X2", MouseButton::X2)
+			.export_values()
+			.finalize();
+
+	// Massive KeyCode Enum
 	py::native_enum<KeyCode>(m, "KeyCode", "enum.IntEnum")
 			.value("UNKNOWN", KeyCode::UNKNOWN)
 			.value("RETURN", KeyCode::RETURN)
@@ -448,66 +553,14 @@ PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
 			.value("ENDCALL", KeyCode::ENDCALL)
 			.export_values()
 			.finalize();
-
-	py::native_enum<MouseButton>(m, "MouseButton", "enum.IntEnum")
-			.value("LEFT", MouseButton::LEFT)
-			.value("MIDDLE", MouseButton::MIDDLE)
-			.value("RIGHT", MouseButton::RIGHT)
-			.value("X1", MouseButton::X1)
-			.value("X2", MouseButton::X2)
-			.export_values()
-			.finalize();
-
-	py::native_enum<PyEventType>(m, "EventType", "enum.Enum")
-			.value("WINDOW_RESIZE", PyEventType::WINDOW_RESIZE)
-			.value("WINDOW_MINIMIZE", PyEventType::WINDOW_MINIMIZE)
-			.value("WINDOW_CLOSE", PyEventType::WINDOW_CLOSE)
-			.value("KEY_PRESS", PyEventType::KEY_PRESS)
-			.value("KEY_RELEASE", PyEventType::KEY_RELEASE)
-			.value("KEY_TYPE", PyEventType::KEY_TYPE)
-			.value("MOUSE_MOVE", PyEventType::MOUSE_MOVE)
-			.value("MOUSE_SCROLL", PyEventType::MOUSE_SCROLL)
-			.value("MOUSE_PRESS", PyEventType::MOUSE_PRESS)
-			.value("MOUSE_RELEASE", PyEventType::MOUSE_RELEASE)
-			.export_values()
-			.finalize();
-
-	py::class_<WindowResizeEvent>(m, "WindowResizeEvent")
-			.def_readwrite("size", &WindowResizeEvent::size);
-
-	py::class_<WindowMinimizeEvent>(m, "WindowMinimizeEvent").def(py::init<>());
-
-	py::class_<WindowCloseEvent>(m, "WindowCloseEvent").def(py::init<>());
-
-	py::class_<KeyPressEvent>(m, "KeyPressEvent")
-			.def_readwrite("key_code", &KeyPressEvent::key_code);
-
-	py::class_<KeyReleaseEvent>(m, "KeyReleaseEvent")
-			.def_readwrite("key_code", &KeyReleaseEvent::key_code);
-
-	py::class_<KeyTypeEvent>(m, "KeyTypeEvent").def_readwrite("text", &KeyTypeEvent::text);
-
-	py::class_<MouseMoveEvent>(m, "MouseMoveEvent")
-			.def_readwrite("position", &MouseMoveEvent::position);
-
-	py::class_<MouseScrollEvent>(m, "MouseScrollEvent")
-			.def_readwrite("offset", &MouseScrollEvent::offset);
-
-	py::class_<MousePressEvent>(m, "MousePressEvent")
-			.def_readwrite("button_code", &MousePressEvent::button_code);
-
-	py::class_<MouseReleaseEvent>(m, "MouseReleaseEvent")
-			.def_readwrite("button_code", &MouseReleaseEvent::button_code);
-
-	py::class_<Input>(m, "Input")
-			.def_static("init", &Input::init)
-			.def_static("is_key_pressed_once", &Input::is_key_pressed_once)
-			.def_static("is_key_pressed", &Input::is_key_pressed)
-			.def_static("is_key_released", &Input::is_key_released)
-			.def_static("is_mouse_pressed", &Input::is_mouse_pressed)
-			.def_static("is_mouse_released", &Input::is_mouse_released)
-			.def_static("get_mouse_position", &Input::get_mouse_position)
-			.def_static("get_scroll_offset", &Input::get_scroll_offset);
 }
 
-} //namespace gl
+PYBIND11_MODULE(_pyglsim, m, py::mod_gil_not_used()) {
+	_bind_math(m);
+	_bind_components(m);
+	_bind_ecs(m);
+	_bind_systems(m);
+	_bind_input(m);
+}
+
+} // namespace gl

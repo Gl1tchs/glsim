@@ -2,7 +2,16 @@
 
 #include "core/registry.h"
 
+#include "core/assert.h"
+
 namespace gl {
+
+template <std::default_initializable T> T* ComponentPool::add() {
+	GL_ASSERT(sizeof(T) == element_size, "Given template argument T does not match element_size");
+
+	T comp;
+	return (T*)_add(&comp);
+}
 
 template <typename T> T* Registry::assign(Entity p_entity) {
 	if (!is_valid(p_entity)) {
@@ -19,10 +28,8 @@ template <typename T> T* Registry::assign(Entity p_entity) {
 		component_pools[component_id] = new ComponentPool(sizeof(T));
 	}
 
-	T* component = new T();
-
 	// Bookkeep
-	component_pools[component_id]->add(component);
+	T* component = component_pools[component_id]->add<T>();
 
 	entities[get_entity_index(p_entity)].mask.set(component_id);
 

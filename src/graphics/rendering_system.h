@@ -69,7 +69,11 @@ private:
 	PerspectiveCamera camera;
 	Transform camera_transform;
 
-	std::shared_ptr<StaticMesh> cube_mesh;
+	struct {
+		std::shared_ptr<StaticMesh> cube;
+		std::shared_ptr<StaticMesh> plane;
+		std::shared_ptr<StaticMesh> sphere;
+	} primitives;
 };
 
 } //namespace gl

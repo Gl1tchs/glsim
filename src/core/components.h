@@ -2,13 +2,14 @@
 
 namespace gl {
 
-// TODO: remove  this
-enum class MeshType {
+enum class PrimitiveType {
 	CUBE,
+	PLANE,
+	SPHERE,
 };
 
 struct MeshComponent {
-	MeshType type = MeshType::CUBE;
+	PrimitiveType type = PrimitiveType::CUBE;
 };
 
 } //namespace gl

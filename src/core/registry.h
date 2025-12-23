@@ -41,6 +41,9 @@ template <class T> inline uint32_t get_component_id() {
 
 inline constexpr Entity INVALID_ENTITY_ID = create_entity_id(UINT32_MAX, 0);
 
+/**
+ * Stack stored component pool for blazingly fast lookups
+ */
 class ComponentPool {
 public:
 	ComponentPool(size_t p_element_size);
@@ -52,7 +55,10 @@ public:
 
 	void* get(size_t p_index);
 
-	void* add(void* p_data);
+	template <std::default_initializable T> T* add();
+
+private:
+	void* _add(void* p_data);
 
 private:
 	std::vector<uint8_t> data;

@@ -8,62 +8,16 @@
 #include "glgpu/types.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
+#include "graphics/primitives.h"
 #include "graphics/renderer.h"
 
 namespace gl {
-
-std::vector<MeshVertex> vertices = {
-	// Position           uv_x   Normal              uv_y
-	// Front face (Z = 1)
-	{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 0
-	{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 0.0f }, // 1
-	{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 2
-	{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 0.0f, 1.0f }, 1.0f }, // 3
-
-	// Back face (Z = -1)
-	{ { -0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 4
-	{ { -0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 5
-	{ { 0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 1.0f }, // 6
-	{ { 0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, 0.0f, -1.0f }, 0.0f }, // 7
-
-	// Top face (Y = 1)
-	{ { -0.5f, 0.5f, 0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 8
-	{ { 0.5f, 0.5f, 0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 0.0f }, // 9
-	{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 10
-	{ { -0.5f, 0.5f, -0.5f }, 0.0f, { 0.0f, 1.0f, 0.0f }, 1.0f }, // 11
-
-	// Bottom face (Y = -1)
-	{ { -0.5f, -0.5f, 0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 12
-	{ { -0.5f, -0.5f, -0.5f }, 0.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 13
-	{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 0.0f }, // 14
-	{ { 0.5f, -0.5f, 0.5f }, 1.0f, { 0.0f, -1.0f, 0.0f }, 1.0f }, // 15
-
-	// Right face (X = 1)
-	{ { 0.5f, -0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 16
-	{ { 0.5f, -0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 0.0f }, // 17
-	{ { 0.5f, 0.5f, -0.5f }, 1.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 18
-	{ { 0.5f, 0.5f, 0.5f }, 0.0f, { 1.0f, 0.0f, 0.0f }, 1.0f }, // 19
-
-	// Left face (X = -1)
-	{ { -0.5f, -0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 0.0f }, // 20
-	{ { -0.5f, 0.5f, 0.5f }, 1.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 21
-	{ { -0.5f, 0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 1.0f }, // 22
-	{ { -0.5f, -0.5f, -0.5f }, 0.0f, { -1.0f, 0.0f, 0.0f }, 0.0f } // 23
-};
-
-std::vector<uint32_t> indices = {
-	0, 1, 2, 0, 2, 3, // Front
-	4, 5, 6, 4, 6, 7, // Back
-	8, 9, 10, 8, 10, 11, // Top
-	12, 13, 14, 12, 14, 15, // Bottom
-	16, 17, 18, 16, 18, 19, // Right
-	20, 21, 22, 20, 22, 23 // Left
-};
 
 RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_window) :
 		backend(p_ctx.get_backend()),
 		window(p_window),
 		renderer(std::make_unique<Renderer>(p_ctx)) {
+	// Create graphics pipeline
 	const GraphicsPipelineCreateInfo create_info = {
 		.color_attachments = { window->get_swapchain_format() },
 		.enable_depth_testing = false,
@@ -72,7 +26,10 @@ RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_wi
 	};
 	pipeline = std::make_unique<GraphicsPipeline>(p_ctx, create_info);
 
-	cube_mesh = StaticMesh::create(backend, vertices, indices);
+	// Create primitives
+	primitives.cube = create_cube_mesh(backend);
+	primitives.plane = create_plane_mesh(backend);
+	primitives.sphere = create_sphere_mesh(backend);
 
 	{
 		scene_buffer = backend->buffer_create(sizeof(SceneData),
@@ -155,6 +112,8 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 		backend->command_begin_rendering(
 				cmd, backend->image_get_size(target_image), { attachment });
 
+		// TODO: move this to _geometry_pass when other materials added
+
 		// Bind cube pipeline (this is the only one existing at the moment)
 		backend->command_bind_graphics_pipeline(cmd, pipeline->pipeline);
 
@@ -208,21 +167,36 @@ void RenderingSystem::_geometry_pass(CommandBuffer p_cmd, Registry& p_registry, 
 		// TODO: remove this
 		transform->rotate(20 * p_dt, VEC3_UP);
 
+		std::shared_ptr<StaticMesh> mesh_in_use = nullptr;
 		switch (mc->type) {
-			case MeshType::CUBE:
-				PushConstants pc = {};
-				pc.transform = transform->to_mat4();
-				pc.vertex_buffer_addr = cube_mesh->vertex_buffer_address;
-				pc.scene_buffer_addr = scene_buffer_addr;
-
-				backend->command_push_constants(
-						p_cmd, pipeline->shader, 0, sizeof(PushConstants), &pc);
-
-				backend->command_bind_index_buffer(
-						p_cmd, cube_mesh->index_buffer, 0, IndexType::UINT32);
-				backend->command_draw_indexed(p_cmd, cube_mesh->index_count);
+			case PrimitiveType::CUBE:
+				mesh_in_use = primitives.cube;
 				break;
+			case PrimitiveType::PLANE:
+				mesh_in_use = primitives.plane;
+				break;
+			case PrimitiveType::SPHERE:
+				mesh_in_use = primitives.sphere;
+				break;
+			default:
+				continue;
 		}
+
+		if (!mesh_in_use) {
+			continue;
+		}
+
+		// Bind push constants
+		PushConstants pc = {};
+		pc.transform = transform->to_mat4();
+		pc.vertex_buffer_addr = mesh_in_use->vertex_buffer_address;
+		pc.scene_buffer_addr = scene_buffer_addr;
+
+		backend->command_push_constants(p_cmd, pipeline->shader, 0, sizeof(PushConstants), &pc);
+
+		// Draw
+		backend->command_bind_index_buffer(p_cmd, mesh_in_use->index_buffer, 0, IndexType::UINT32);
+		backend->command_draw_indexed(p_cmd, mesh_in_use->index_count);
 	}
 }
 

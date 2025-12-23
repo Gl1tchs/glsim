@@ -3,16 +3,18 @@ import sys
 import time
 
 from pyglsim import (
-    World,
     Vec2u,
+    Vec3f,
+    PrimitiveType,
+    World,
     GpuContext,
     Window,
     RenderingSystem,
     KeyCode,
-    Input,
     WindowMinimizeEvent,
     EventType,
     subscribe_event,
+    Input,
 )
 
 
@@ -33,8 +35,11 @@ def main() -> None:
         subscribe_event(EventType.WINDOW_MINIMIZE, on_window_minimize)
 
     e = world.spawn()
-    world.add_mesh(e)
-    
+    world.add_mesh(e, PrimitiveType.PLANE)
+
+    t = world.get_transform(e)
+    t.rotate(90.0, Vec3f(1.0, 0.0, 0.0))
+
     last = time.time()
     while True:
         if window and window.should_close():

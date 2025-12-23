@@ -21,10 +21,12 @@ struct StaticMesh {
 
 	// AABB aabb;
 
-	~StaticMesh();
+	virtual ~StaticMesh();
 
 	static std::shared_ptr<StaticMesh> create(std::shared_ptr<RenderBackend> p_backend,
-			const std::span<MeshVertex>& p_vertices, const std::span<uint32_t>& p_indices);
+			const std::span<const MeshVertex> p_vertices, std::span<const uint32_t> p_indices);
+
+	void upload(std::span<const MeshVertex> p_vertices, std::span<const uint32_t> p_indices);
 
 private:
 	std::shared_ptr<RenderBackend> backend;
