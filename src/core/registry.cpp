@@ -32,11 +32,6 @@ void* ComponentPool::get(size_t p_idx) {
 Registry::~Registry() { clear(); }
 
 void Registry::clear() {
-	// Delete the pools
-	for (ComponentPool* pool : component_pools) {
-		delete pool;
-	}
-
 	// Clear all data
 	component_pools.clear();
 	entities.clear();
@@ -62,8 +57,8 @@ void Registry::copy_to(Registry& p_dest) {
 		}
 
 		// Copy the components
-		ComponentPool const* old_pool = component_pools[comp_id];
-		p_dest.component_pools[comp_id] = new ComponentPool(*old_pool);
+		const auto old_pool = component_pools[comp_id];
+		p_dest.component_pools[comp_id] = std::make_unique<ComponentPool>(*old_pool);
 	}
 }
 

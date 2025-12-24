@@ -183,7 +183,7 @@ private:
 	uint32_t entity_counter = 0;
 	EntityContainer entities;
 	std::queue<Entity> free_indices;
-	std::vector<ComponentPool*> component_pools;
+	std::vector<std::shared_ptr<ComponentPool>> component_pools;
 };
 
 } //namespace gl

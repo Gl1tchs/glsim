@@ -13,8 +13,8 @@ template <std::default_initializable T> T* ComponentPool::add(uint32_t p_idx) {
 	const size_t offset = p_idx % PAGE_SIZE;
 
 	// Ensure we have enough pages
-	while (page_idx >= pages.size()) {
-		pages.push_back(nullptr);
+	if (page_idx >= pages.size()) {
+		pages.resize(page_idx + 1);
 	}
 
 	// Allocate the page if it doesn't exist
@@ -38,7 +38,7 @@ template <typename T> T* Registry::assign(Entity p_entity) {
 	}
 
 	if (!component_pools[component_id]) {
-		component_pools[component_id] = new ComponentPool(sizeof(T));
+		component_pools[component_id] = std::make_shared<ComponentPool>(sizeof(T));
 	}
 
 	// Bookkeep
