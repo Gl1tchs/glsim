@@ -1,0 +1,219 @@
+#include <catch2/catch_test_macros.hpp>
+
+#include "core/registry.h"
+#include "core/transform.h"
+
+using namespace gl;
+
+struct TestComponent1 {
+	int a;
+	int b;
+	int c;
+
+	friend bool operator==(const TestComponent1& lhs, const TestComponent1& rhs) {
+		return std::tie(lhs.a, lhs.b, lhs.c) == std::tie(rhs.a, rhs.b, rhs.c);
+	}
+};
+
+struct TestComponent2 {
+	float x;
+};
+
+TEST_CASE("Registry entity creation and destruction", "[core]") {
+	Registry scene;
+
+	SECTION("Create new entities") {
+		Entity e1 = scene.spawn();
+		Entity e2 = scene.spawn();
+
+		REQUIRE(e1 != e2); // Each entity should have a unique ID
+		REQUIRE(scene.is_valid(e1));
+		REQUIRE(scene.is_valid(e2));
+	}
+
+	SECTION("Destroy entities and reuse IDs") {
+		Entity e1 = scene.spawn();
+		scene.despawn(e1);
+
+		REQUIRE_FALSE(scene.is_valid(e1)); // e1 should no longer be valid
+
+		Entity e2 = scene.spawn();
+		REQUIRE(scene.is_valid(e2));
+		REQUIRE(get_entity_index(e2) == get_entity_index(e1)); // ID of e1 should be reused
+	}
+
+	SECTION("Destroy and spawn multiple entities") {
+		Entity e1 = scene.spawn();
+		Entity e2 = scene.spawn();
+		scene.despawn(e1);
+		scene.despawn(e2);
+
+		REQUIRE_FALSE(scene.is_valid(e1));
+		REQUIRE_FALSE(scene.is_valid(e2));
+
+		Entity e3 = scene.spawn();
+		Entity e4 = scene.spawn();
+
+		REQUIRE(scene.is_valid(e3));
+		REQUIRE(scene.is_valid(e4));
+
+		REQUIRE((get_entity_index(e3) == get_entity_index(e1) ||
+				get_entity_index(e3) ==
+						get_entity_index(e2))); // e3 should reuse one of the deleted IDs
+		REQUIRE((get_entity_index(e4) == get_entity_index(e1) ||
+				get_entity_index(e4) ==
+						get_entity_index(e2))); // e4 should reuse the other deleted ID
+
+		REQUIRE(get_entity_version(e3) == 1);
+		REQUIRE(get_entity_version(e4) == 1);
+	}
+
+	SECTION("Check invalid entities") {
+		Entity e1 = scene.spawn();
+		REQUIRE(scene.is_valid(e1));
+
+		Entity invalid_entity = e1 + 1000;
+		REQUIRE_FALSE(scene.is_valid(invalid_entity));
+
+		scene.despawn(e1);
+		REQUIRE_FALSE(scene.is_valid(e1));
+	}
+}
+
+TEST_CASE("Registry Copy", "[core]") {
+	Registry scene1;
+
+	Entity e1 = scene1.spawn();
+
+	TestComponent1* t1 = scene1.assign<TestComponent1>(e1);
+	t1->a = 1;
+	t1->b = 2;
+	t1->c = 3;
+
+	scene1.assign<TestComponent2>(e1);
+
+	Entity e2 = scene1.spawn();
+	scene1.assign<TestComponent1>(e2);
+
+	Registry scene2;
+	scene1.copy_to(scene2);
+
+	// Entities and their components has to be copied as they are
+
+	REQUIRE(scene2.has<TestComponent1>(e1));
+	REQUIRE(scene2.has<TestComponent2>(e1));
+
+	TestComponent1* t1_copy = scene2.get<TestComponent1>(e1);
+	REQUIRE(t1_copy != t1); // they are not pointing to the same memory
+	REQUIRE(*t1_copy == *t1); // but inside are the same
+
+	REQUIRE(scene2.has<TestComponent1>(e2));
+}
+
+TEST_CASE("Components", "[core]") {
+	SECTION("Component ids") {
+		uint32_t transform_id = get_component_id<Transform>();
+		uint32_t test_component1_id = get_component_id<TestComponent1>();
+		uint32_t test_component2_id = get_component_id<TestComponent2>();
+
+		REQUIRE(transform_id != test_component1_id);
+		REQUIRE(transform_id != test_component2_id);
+		REQUIRE(test_component1_id != test_component2_id);
+	}
+
+	SECTION("Component assign and remove") {
+		Registry scene;
+
+		Entity e1 = scene.spawn();
+		Entity e2 = scene.spawn();
+
+		{
+			TestComponent1* t1 = scene.assign<TestComponent1>(e1);
+			t1->a = 6.0f;
+			t1->b = 3.0f;
+			t1->c = 9.0f;
+
+			REQUIRE(t1 == scene.get<TestComponent1>(e1));
+
+			REQUIRE(t1->a == 6.0f);
+			REQUIRE(t1->b == 3.0f);
+			REQUIRE(t1->c == 9.0f);
+		}
+		{
+			TestComponent2* t1 = scene.assign<TestComponent2>(e2);
+			t1->x = 9.0f;
+
+			REQUIRE(t1 == scene.get<TestComponent2>(e2));
+			REQUIRE(t1->x == 9.0f);
+
+			scene.remove<TestComponent2>(e2);
+
+			REQUIRE_FALSE(scene.get<TestComponent2>(e2));
+		}
+	}
+}
+
+TEST_CASE("Registry views", "[core]") {
+	Registry scene;
+
+	Entity e1 = scene.spawn();
+	Entity e2 = scene.spawn();
+	Entity e3 = scene.spawn();
+
+	scene.assign_many<TestComponent1, TestComponent2>(e1);
+	scene.assign_many<TestComponent1, TestComponent2>(e2);
+	scene.assign<TestComponent1>(e3);
+
+	const auto view1 = scene.view<TestComponent1>();
+	{
+		auto it = view1.begin();
+
+		REQUIRE(*it == e1);
+
+		++it;
+
+		REQUIRE(*it == e2);
+
+		++it;
+
+		REQUIRE(*it == e3);
+
+		++it;
+
+		REQUIRE(it == view1.end());
+	}
+
+	const auto view2 = scene.view<TestComponent2>();
+	{
+		auto it = view2.begin();
+
+		REQUIRE(*it == e1);
+
+		++it;
+
+		REQUIRE(*it == e2);
+
+		++it;
+
+		REQUIRE(it == view2.end());
+	}
+
+	const auto view3 = scene.view();
+	{
+		auto it = view3.begin();
+
+		REQUIRE(*it == e1);
+
+		++it;
+
+		REQUIRE(*it == e2);
+
+		++it;
+
+		REQUIRE(*it == e3);
+
+		++it;
+
+		REQUIRE(it == view3.end());
+	}
+}

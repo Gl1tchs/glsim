@@ -42,14 +42,16 @@ template <class T> inline uint32_t get_component_id() {
 inline constexpr Entity INVALID_ENTITY_ID = create_entity_id(UINT32_MAX, 0);
 
 /**
- * Stack stored component pool for blazingly fast lookups
+ * Paged component pool for blazingly fast lookups
  */
 class ComponentPool {
 public:
+	static constexpr size_t PAGE_SIZE = 1024;
+
 	ComponentPool(size_t p_element_size);
 	~ComponentPool() = default;
 
-	size_t get_component_count() const;
+	ComponentPool(const ComponentPool& p_other);
 
 	size_t get_size() const;
 
@@ -58,10 +60,7 @@ public:
 	template <std::default_initializable T> T* add(uint32_t p_idx);
 
 private:
-	void* _add(uint32_t p_idx, void* p_data);
-
-private:
-	std::vector<uint8_t> data;
+	std::vector<std::unique_ptr<uint8_t[]>> pages;
 	size_t element_size = 0;
 };
 

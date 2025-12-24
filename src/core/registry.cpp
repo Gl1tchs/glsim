@@ -4,29 +4,29 @@ namespace gl {
 
 ComponentPool::ComponentPool(size_t p_element_size) : element_size(p_element_size) {}
 
-size_t ComponentPool::get_component_count() const {
-	if (data.empty()) {
-		return 0;
+ComponentPool::ComponentPool(const ComponentPool& p_other) : element_size(p_other.element_size) {
+	for (const auto& page : p_other.pages) {
+		if (!page) {
+			continue;
+		}
+
+		auto new_page = std::make_unique<uint8_t[]>(PAGE_SIZE * element_size);
+		std::memcpy(new_page.get(), page.get(), PAGE_SIZE * element_size);
+		pages.push_back(std::move(new_page));
 	}
-	return data.size() / element_size;
 }
 
 size_t ComponentPool::get_size() const { return element_size; }
 
-void* ComponentPool::get(size_t p_idx) { return data.data() + (p_idx * element_size); }
+void* ComponentPool::get(size_t p_idx) {
+	const size_t page_idx = p_idx / PAGE_SIZE;
+	const size_t offset = p_idx % PAGE_SIZE;
 
-void* ComponentPool::_add(uint32_t p_idx, void* p_data) {
-	const size_t insert_pos = p_idx * element_size;
-	const size_t required_size = insert_pos + element_size;
-	if (data.size() < required_size) {
-		// allocate more space
-		data.resize(required_size);
+	if (page_idx >= pages.size() || !pages[page_idx]) {
+		return nullptr;
 	}
 
-	uint8_t* destination = data.data() + insert_pos;
-	std::memcpy(destination, p_data, element_size);
-
-	return destination;
+	return pages[page_idx].get() + (offset * element_size);
 }
 
 Registry::~Registry() { clear(); }
@@ -62,7 +62,8 @@ void Registry::copy_to(Registry& p_dest) {
 		}
 
 		// Copy the components
-		p_dest.component_pools[comp_id] = component_pools[comp_id];
+		ComponentPool const* old_pool = component_pools[comp_id];
+		p_dest.component_pools[comp_id] = new ComponentPool(*old_pool);
 	}
 }
 

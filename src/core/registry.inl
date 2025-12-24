@@ -9,9 +9,21 @@ namespace gl {
 template <std::default_initializable T> T* ComponentPool::add(uint32_t p_idx) {
 	GL_ASSERT(sizeof(T) == element_size, "Given template argument T does not match element_size");
 
-	T comp;
+	const size_t page_idx = p_idx / PAGE_SIZE;
+	const size_t offset = p_idx % PAGE_SIZE;
 
-	return (T*)_add(p_idx, &comp);
+	// Ensure we have enough pages
+	while (page_idx >= pages.size()) {
+		pages.push_back(nullptr);
+	}
+
+	// Allocate the page if it doesn't exist
+	if (!pages[page_idx]) {
+		pages[page_idx] = std::make_unique<uint8_t[]>(PAGE_SIZE * element_size);
+	}
+
+	void* ptr = pages[page_idx].get() + (offset * element_size);
+	return new (ptr) T(); // In-place construction
 }
 
 template <typename T> T* Registry::assign(Entity p_entity) {
