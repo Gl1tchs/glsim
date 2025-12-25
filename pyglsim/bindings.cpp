@@ -1,8 +1,6 @@
 #include <pybind11/native_enum.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/trampoline_self_life_support.h>
-#include <cstdint>
-#include <stdexcept>
 
 #include "core/components.h"
 #include "core/event_system.h"
@@ -14,10 +12,10 @@
 #include "core/transform.h"
 #include "core/world.h"
 #include "glgpu/vec.h"
-#include "graphics/camera.h"
 #include "graphics/rendering_system.h"
 #include "graphics/window.h"
 #include "physics/physics_system.h"
+#include "physics/rigidbody.h"
 
 namespace gl {
 
@@ -260,6 +258,46 @@ private:
 	Entity entity;
 };
 
+class PyRigidbodyProxy {
+public:
+	PyRigidbodyProxy(Registry& p_registry, Entity p_entity, bool p_should_assign = false) :
+			registry(&p_registry), entity(p_entity) {
+		if (!registry->has<Rigidbody>(entity)) {
+			if (p_should_assign) {
+				registry->assign<Rigidbody>(entity);
+			} else {
+				throw std::runtime_error(std::format(
+						"Entity with id {} does not own a RigidbodyComponent", (uint32_t)p_entity));
+			}
+		}
+	}
+
+	float get_mass() { return _get()->mass; }
+	void set_mass(float p_mass) { _get()->mass = p_mass; }
+
+	const Vec3f& get_velocity() { return _get()->velocity; }
+	void set_velocity(const Vec3f& p_velocity) { _get()->velocity = p_velocity; }
+
+	const Vec3f& get_force_acc() { return _get()->force_acc; }
+	void set_force_acc(const Vec3f& p_force_acc) { _get()->force_acc = p_force_acc; }
+
+	float get_linear_damping() { return _get()->linear_damping; }
+	void set_linear_damping(float p_linear_damping) { _get()->linear_damping = p_linear_damping; }
+
+	bool get_is_static() { return _get()->is_static; }
+	void set_is_static(bool p_is_static) { _get()->is_static = p_is_static; }
+
+	bool get_use_gravity() { return _get()->use_gravity; }
+	void set_use_gravity(bool p_use_gravity) { _get()->use_gravity = p_use_gravity; }
+
+private:
+	Rigidbody* _get() { return registry->get<Rigidbody>(entity); }
+
+private:
+	Registry* registry;
+	Entity entity;
+};
+
 static void _bind_components(py::module_& m) {
 	py::class_<PyTransformProxy>(m, "Transform")
 			.def(py::init<Registry&, Entity, bool>())
@@ -293,6 +331,20 @@ static void _bind_components(py::module_& m) {
 			.finalize();
 
 	py::class_<PyCameraProxy>(m, "CameraComponent").def(py::init<Registry&, Entity, bool>());
+
+	py::class_<PyRigidbodyProxy>(m, "Rigidbody")
+			.def(py::init<Registry&, Entity, bool>())
+			.def_property("mass", &PyRigidbodyProxy::get_mass, &PyRigidbodyProxy::set_mass)
+			.def_property(
+					"velocity", &PyRigidbodyProxy::get_velocity, &PyRigidbodyProxy::set_velocity)
+			.def_property(
+					"force_acc", &PyRigidbodyProxy::get_force_acc, &PyRigidbodyProxy::set_force_acc)
+			.def_property("linear_damping", &PyRigidbodyProxy::get_linear_damping,
+					&PyRigidbodyProxy::set_linear_damping)
+			.def_property(
+					"is_static", &PyRigidbodyProxy::get_is_static, &PyRigidbodyProxy::set_is_static)
+			.def_property("use_gravity", &PyRigidbodyProxy::get_use_gravity,
+					&PyRigidbodyProxy::set_use_gravity);
 }
 
 static void _bind_ecs(py::module_& m) {
@@ -331,12 +383,20 @@ static void _bind_ecs(py::module_& m) {
 
 						return PyCameraProxy(self, entity, true);
 					})
-			.def("get_mesh", [](World& self, Entity entity) {
+			.def("get_mesh",
+					[](World& self, Entity entity) {
+						if (!self.has<Transform>(entity)) {
+							self.assign<Transform>(entity);
+						}
+
+						return PyMeshProxy(self, entity, true);
+					})
+			.def("get_rigidbody", [](World& self, Entity entity) {
 				if (!self.has<Transform>(entity)) {
 					self.assign<Transform>(entity);
 				}
 
-				return PyMeshProxy(self, entity, true);
+				return PyRigidbodyProxy(self, entity, true);
 			});
 }
 

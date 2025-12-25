@@ -4,6 +4,8 @@
 
 namespace gl {
 
+// Rendering Components
+
 enum class CameraProjection {
 	ORTHOGRAPHIC,
 	PERSPECTIVE,

@@ -16,6 +16,8 @@ struct GraphicsPipelineCreateInfo {
 	bool enable_depth_testing = true;
 	bool enable_depth_write = true;
 
+	bool wireframe = false;
+
 	std::string vertex_shader;
 	std::string fragment_shader;
 };

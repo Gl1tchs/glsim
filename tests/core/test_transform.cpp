@@ -7,9 +7,9 @@ using namespace gl;
 TEST_CASE("Transform initialization", "[core]") {
 	Transform t;
 
-	REQUIRE(t.position == VEC3_ZERO);
-	REQUIRE(t.scale == VEC3_ONE);
-	REQUIRE(t.rotation == VEC3_ZERO);
+	REQUIRE(t.position == Vec3f::ZERO);
+	REQUIRE(t.scale == Vec3f::ONE);
+	REQUIRE(t.rotation == Vec3f::ZERO);
 }
 
 TEST_CASE("Translate transform", "[core]") {
@@ -22,7 +22,7 @@ TEST_CASE("Translate transform", "[core]") {
 
 TEST_CASE("Rotate transform", "[core]") {
 	Transform t;
-	t.rotate(90.0f, VEC3_UP);
+	t.rotate(90.0f, Vec3f::UP);
 
 	REQUIRE(t.rotation == Vec3f{ 0.0f, 90.0f, 0.0f });
 }
@@ -30,9 +30,9 @@ TEST_CASE("Rotate transform", "[core]") {
 TEST_CASE("Transform directions", "[core]") {
 	Transform t;
 
-	REQUIRE(t.get_forward() == VEC3_FORWARD);
-	REQUIRE(t.get_right() == VEC3_RIGHT);
-	REQUIRE(t.get_up() == VEC3_UP);
+	REQUIRE(t.get_forward() == Vec3f::FORWARD);
+	REQUIRE(t.get_right() == Vec3f::RIGHT);
+	REQUIRE(t.get_up() == Vec3f::UP);
 }
 
 TEST_CASE("Transform matrix", "[core]") {

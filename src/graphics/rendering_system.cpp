@@ -201,7 +201,7 @@ void RenderingSystem::_update_scene_uniforms(Registry& p_registry, Image p_targe
 void RenderingSystem::_update_material_uniforms() {
 	MaterialData* data = (MaterialData*)backend->buffer_map(material_buffer);
 	if (data) {
-		data->base_color = COLOR_MAGENTA;
+		data->base_color = COLOR_BLACK;
 		backend->buffer_unmap(material_buffer);
 	}
 }

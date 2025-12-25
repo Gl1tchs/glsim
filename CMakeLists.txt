@@ -6,6 +6,7 @@ project(glsim VERSION 0.1.0)
 # Options
 # ------------------------------------------------------------------------------
 option(GL_BUILD_TESTS "Build tests" ON)
+option(GL_BUILD_SANDBOX "Build sandbox application" ON)
 
 # ------------------------------------------------------------------------------
 # Configuration
@@ -69,12 +70,15 @@ endif()
 
 
 # ------------------------------------------------------------------------------
-# Tests
+# Tests / Sandbox
 # ------------------------------------------------------------------------------
 if(GL_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
+if (GL_BUILD_SANDBOX)
+    add_subdirectory(sandbox)
+endif()
 
 # ------------------------------------------------------------------------------
 # pyglsim 

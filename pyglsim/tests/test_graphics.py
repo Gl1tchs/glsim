@@ -15,6 +15,7 @@ from pyglsim import (
     EventType,
     subscribe_event,
     Input,
+    PhysicsSystem,
 )
 
 
@@ -36,17 +37,22 @@ def main() -> None:
 
     # Setup camera
     c = world.spawn()
-
     world.get_transform(c).position.z = 5
     world.get_camera(c)
 
     # Create a cube
     e = world.spawn()
-
     mc = world.get_mesh(e)
     mc.primitive_type = PrimitiveType.SPHERE
 
     t = world.get_transform(e)
+    t.position.z = -2
+    t.scale = Vec3f(0.25, 0.25, 0.25)
+
+    rb = world.get_rigidbody(e)
+    rb.use_gravity = False
+
+    world.add_system(PhysicsSystem(gpu))
 
     last = time.time()
     while True:
@@ -59,11 +65,17 @@ def main() -> None:
         if window:
             window.poll_events()
 
-            if Input.is_key_pressed(KeyCode.SPACE):
-                print("Hello World")
+            if Input.is_key_pressed(KeyCode.D):
+                rb.force_acc.x = rb.force_acc.x + 1
 
-        t.rotate(20 * dt, Vec3f(0, 1, 0))
-        t.rotate(30 * dt, Vec3f(1, 0, 0))
+            if Input.is_key_pressed(KeyCode.A):
+                rb.force_acc.x = rb.force_acc.x - 1
+
+            if Input.is_key_pressed(KeyCode.W):
+                rb.force_acc.y = rb.force_acc.y + 1
+
+            if Input.is_key_pressed(KeyCode.S):
+                rb.force_acc.y = rb.force_acc.y - 1
 
         world.update(dt)
 

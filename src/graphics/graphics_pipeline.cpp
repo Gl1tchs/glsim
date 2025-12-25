@@ -46,7 +46,9 @@ GraphicsPipeline::GraphicsPipeline(GpuContext& p_ctx, const GraphicsPipelineCrea
         .shader = shader,
         .primitive = p_info.primitive,
         .vertex_input_state = {},
-        .rasterization_state = {},
+        .rasterization_state = {
+            .wireframe = p_info.wireframe,
+        },
         .multisample_state = {},
         .depth_stencil_state = {
             .enable_depth_test = p_info.enable_depth_testing,

@@ -15,6 +15,9 @@ public:
 	void on_destroy(Registry& p_registry) override;
 
 private:
+	void _integration_phase(Registry& p_registry, float p_ts);
+
+private:
 	std::shared_ptr<RenderBackend> backend;
 };
 
