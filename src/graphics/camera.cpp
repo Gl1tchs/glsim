@@ -33,7 +33,7 @@ Mat4 PerspectiveCamera::get_view_matrix(const Transform& p_transform) const {
 }
 
 Mat4 PerspectiveCamera::get_projection_matrix() const {
-	Mat4 proj = Mat4::perspective(as_radians(fov), aspect_ratio, near_clip, far_clip);
+	Mat4 proj = Mat4::perspective(math::as_radians(fov), aspect_ratio, near_clip, far_clip);
 
 	// invert the Y direction on projection matrix so that we are more similar
 	// to opengl and gltf axis

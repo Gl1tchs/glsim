@@ -11,7 +11,7 @@
 #include "core/system.h"
 #include "core/transform.h"
 #include "core/world.h"
-#include "glgpu/vec.h"
+#include "glgpu/vector.h"
 #include "graphics/rendering_system.h"
 #include "graphics/window.h"
 #include "physics/physics_system.h"

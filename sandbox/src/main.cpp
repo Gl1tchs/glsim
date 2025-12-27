@@ -44,17 +44,17 @@ int main(int argc, char* argv[]) {
 		window->poll_events();
 
 		if (Input::is_key_pressed(KeyCode::D)) {
-			rb->add_force(Vec3f::RIGHT);
+			rb->add_force(Vec3f::right());
 		}
 		if (Input::is_key_pressed(KeyCode::A)) {
-			rb->add_force(-Vec3f::RIGHT);
+			rb->add_force(-Vec3f::right());
 		}
 
 		if (Input::is_key_pressed(KeyCode::W)) {
-			rb->add_force(Vec3f::UP);
+			rb->add_force(Vec3f::up());
 		}
 		if (Input::is_key_pressed(KeyCode::S)) {
-			rb->add_force(-Vec3f::UP);
+			rb->add_force(-Vec3f::up());
 		}
 
 		world.update(1 / 144.0f);

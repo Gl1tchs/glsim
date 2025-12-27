@@ -1,6 +1,6 @@
 #pragma once
 
-#include "glgpu/vec.h"
+#include "glgpu/vector.h"
 
 namespace gl {
 

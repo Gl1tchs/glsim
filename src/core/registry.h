@@ -46,10 +46,12 @@ inline constexpr Entity INVALID_ENTITY_ID = create_entity_id(UINT32_MAX, 0);
  */
 class ComponentPool {
 public:
+	typedef std::function<void()> DeletorFunc;
+
 	static constexpr size_t PAGE_SIZE = 1024;
 
 	ComponentPool(size_t p_element_size);
-	~ComponentPool() = default;
+	~ComponentPool();
 
 	ComponentPool(const ComponentPool& p_other);
 

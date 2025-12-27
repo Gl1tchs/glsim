@@ -4,15 +4,15 @@
 
 #pragma once
 
-#include "glgpu/mat.h"
-#include "glgpu/vec.h"
+#include "glgpu/matrix.h"
+#include "glgpu/vector.h"
 
 namespace gl {
 
 struct Transform {
-	Vec3f position = Vec3f::ZERO;
-	Vec3f rotation = Vec3f::ZERO;
-	Vec3f scale = Vec3f::ONE;
+	Vec3f position = Vec3f::zero();
+	Vec3f rotation = Vec3f::zero();
+	Vec3f scale = Vec3f::one();
 
 	void translate(const Vec3f& p_translation);
 

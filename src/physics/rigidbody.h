@@ -1,17 +1,17 @@
 #pragma once
 
-#include "glgpu/vec.h"
+#include "glgpu/vector.h"
 
 namespace gl {
 
 struct Rigidbody {
 	float mass = 1.0f;
-	Vec3f velocity = Vec3f::ZERO;
-	Vec3f force_acc = Vec3f::ZERO;
+	Vec3f velocity = Vec3f::zero();
+	Vec3f force_acc = Vec3f::zero();
 	float linear_damping = 0.01f;
 
-	// Vec3f angular_velocity = VEC3_ZERO;
-	// Vec3f torque_acc = VEC3_ZERO;
+	// Vec3f angular_velocity = Vec3f::zero();
+	// Vec3f torque_acc = Vec3f::zero();
 	// float angular_damping = 0.01f;
 
 	// Mat3 local_intertia_tensor;

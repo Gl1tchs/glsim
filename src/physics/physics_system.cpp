@@ -43,7 +43,7 @@ void PhysicsSystem::_integration_phase(Registry& p_registry, float p_ts) {
 		transform->position += rb->velocity * p_ts;
 
 		// Clear accumulators
-		rb->force_acc = Vec3f::ZERO;
+		rb->force_acc = Vec3f::zero();
 	}
 }
 

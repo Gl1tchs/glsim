@@ -6,12 +6,27 @@
 #include "core/transform.h"
 #include "glgpu/color.h"
 #include "glgpu/types.h"
+#include "graphics/aabb.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
 #include "graphics/primitives.h"
 #include "graphics/renderer.h"
 
 namespace gl {
+
+struct SceneData {
+	Mat4 viewproj;
+};
+
+struct PushConstants {
+	Mat4 transform;
+	BufferDeviceAddress vertex_buffer_addr;
+	BufferDeviceAddress scene_buffer_addr;
+};
+
+struct MaterialData {
+	Color base_color;
+};
 
 RenderingSystem::RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_window) :
 		backend(p_ctx.get_backend()),
@@ -54,8 +69,12 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 		return; // Swapchain is likely out of date or minimized
 	}
 
+	// Prepare camera and frustum
+	Mat4 viewproj = _get_camera_viewproj(p_registry, target_image);
+	Frustum frustum = Frustum::from_view_proj(viewproj);
+
 	// CPU-Side state updates
-	_update_scene_uniforms(p_registry, target_image);
+	_update_scene_uniforms(viewproj);
 	_update_material_uniforms();
 
 	// GPU command recording
@@ -65,6 +84,7 @@ void RenderingSystem::on_update(Registry& p_registry, float p_dt) {
 		.cmd = cmd,
 		.target_image = target_image,
 		.dt = p_dt,
+		.frustum = frustum,
 	};
 
 	{
@@ -102,9 +122,17 @@ void RenderingSystem::_execute_geometry_pass(const FrameContext& ctx, Registry& 
 			continue;
 		}
 
+		const Mat4 transform_mat = transform->to_mat4();
+
+		// If objects is not inside of the view frustum, discard it.
+		const AABB aabb = mesh->aabb.transform(transform_mat);
+		if (!aabb.is_inside_frustum(ctx.frustum)) {
+			continue;
+		}
+
 		// Push constants
 		PushConstants pc = {};
-		pc.transform = transform->to_mat4();
+		pc.transform = transform_mat;
 		pc.vertex_buffer_addr = mesh->vertex_buffer_address;
 		pc.scene_buffer_addr = scene_buffer_addr;
 
@@ -159,7 +187,7 @@ void RenderingSystem::_init_material_buffer() {
 	_update_material_uniforms();
 }
 
-void RenderingSystem::_update_scene_uniforms(Registry& p_registry, Image p_target_image) {
+Mat4 RenderingSystem::_get_camera_viewproj(Registry& p_registry, Image p_target_image) {
 	const Vec3u size = backend->image_get_size(p_target_image);
 
 	float aspect_ratio = 1.0f;
@@ -191,9 +219,13 @@ void RenderingSystem::_update_scene_uniforms(Registry& p_registry, Image p_targe
 		break;
 	}
 
+	return viewproj;
+}
+
+void RenderingSystem::_update_scene_uniforms(const Mat4& p_viewproj) {
 	SceneData* data = (SceneData*)backend->buffer_map(scene_buffer);
 	if (data) {
-		data->viewproj = viewproj;
+		data->viewproj = p_viewproj;
 		backend->buffer_unmap(scene_buffer);
 	}
 }

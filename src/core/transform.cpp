@@ -10,17 +10,17 @@ void Transform::rotate(const float p_angle, const Vec3f& p_axis) {
 
 Vec3f Transform::get_forward() const {
 	const Mat4 rot_mat = Mat4::from_euler_angles(rotation);
-	return Vec3f(rot_mat * Vec3f::FORWARD).normalize();
+	return Vec3f(rot_mat * Vec3f::forward()).normalize();
 }
 
 Vec3f Transform::get_right() const {
 	const Mat4 rot_mat = Mat4::from_euler_angles(rotation);
-	return Vec3f(rot_mat * Vec3f::RIGHT).normalize();
+	return Vec3f(rot_mat * Vec3f::right()).normalize();
 }
 
 Vec3f Transform::get_up() const {
 	const Mat4 rot_mat = Mat4::from_euler_angles(rotation);
-	return Vec3f(rot_mat * Vec3f::UP).normalize();
+	return Vec3f(rot_mat * Vec3f::up()).normalize();
 }
 
 Mat4 Transform::to_mat4() const {

@@ -4,6 +4,7 @@
 #include <any>
 #include <array>
 #include <bitset>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -39,3 +40,5 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+namespace fs = std::filesystem;

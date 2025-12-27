@@ -54,6 +54,7 @@ target_include_directories(glsim PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/src/
     ${CMAKE_BINARY_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/external/glgpu/include/
+    ${CMAKE_CURRENT_LIST_DIR}/external/stb
 )
 
 target_link_libraries(glsim PRIVATE glgpu)

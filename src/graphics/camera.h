@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/transform.h"
-#include "glgpu/mat.h"
+#include "glgpu/matrix.h"
 
 namespace gl {
 

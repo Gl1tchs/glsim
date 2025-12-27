@@ -3,12 +3,9 @@
 #include "core/components.h"
 #include "core/gpu_context.h"
 #include "core/system.h"
-#include "core/transform.h"
 #include "glgpu/backend.h"
-#include "glgpu/color.h"
-#include "glgpu/mat.h"
+#include "glgpu/matrix.h"
 #include "glgpu/types.h"
-#include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
 #include "graphics/mesh.h"
 #include "graphics/renderer.h"
@@ -36,6 +33,7 @@ private:
 		CommandBuffer cmd;
 		Image target_image;
 		float dt;
+		Frustum frustum;
 	};
 
 	void _execute_geometry_pass(const FrameContext& p_ctx, Registry& p_registry);
@@ -53,7 +51,9 @@ private:
 
 	// Update helpers
 
-	void _update_scene_uniforms(Registry& p_registry, Image p_target_image);
+	Mat4 _get_camera_viewproj(Registry& p_registry, Image p_target_image);
+
+	void _update_scene_uniforms(const Mat4& p_viewproj);
 
 	void _update_material_uniforms();
 
@@ -68,20 +68,6 @@ private:
 
 	// Scene data
 	std::unique_ptr<GraphicsPipeline> pipeline; // unlit pipeline
-
-	struct SceneData {
-		Mat4 viewproj;
-	};
-
-	struct PushConstants {
-		Mat4 transform;
-		BufferDeviceAddress vertex_buffer_addr;
-		BufferDeviceAddress scene_buffer_addr;
-	};
-
-	struct MaterialData {
-		Color base_color;
-	};
 
 	Buffer scene_buffer;
 	BufferDeviceAddress scene_buffer_addr;

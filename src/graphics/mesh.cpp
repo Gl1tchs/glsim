@@ -21,6 +21,18 @@ std::shared_ptr<StaticMesh> StaticMesh::create(std::shared_ptr<RenderBackend> p_
 	return smesh;
 }
 
+static AABB _get_aabb_from_vertices(std::span<const MeshVertex> p_vertices) {
+	Vec3f min = Vec3f(std::numeric_limits<float>::max());
+	Vec3f max = Vec3f(std::numeric_limits<float>::lowest());
+
+	for (const auto& v : p_vertices) {
+		min = math::min(min, v.position);
+		max = math::max(max, v.position);
+	}
+
+	return { min, max };
+}
+
 void StaticMesh::upload(
 		std::span<const MeshVertex> p_vertices, std::span<const uint32_t> p_indices) {
 	const size_t vertex_size = p_vertices.size() * sizeof(MeshVertex);
@@ -73,6 +85,7 @@ void StaticMesh::upload(
 
 	vertex_buffer_address = backend->buffer_get_device_address(vertex_buffer);
 	index_count = p_indices.size();
+	aabb = _get_aabb_from_vertices(p_vertices);
 }
 
 } //namespace gl

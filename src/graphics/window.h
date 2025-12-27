@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/gpu_context.h"
-#include "glgpu/vec.h"
+#include "glgpu/vector.h"
 
 #include <SDL2/SDL_video.h>
 

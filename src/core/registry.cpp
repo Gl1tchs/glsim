@@ -4,6 +4,8 @@ namespace gl {
 
 ComponentPool::ComponentPool(size_t p_element_size) : element_size(p_element_size) {}
 
+ComponentPool::~ComponentPool() {}
+
 ComponentPool::ComponentPool(const ComponentPool& p_other) : element_size(p_other.element_size) {
 	for (const auto& page : p_other.pages) {
 		if (!page) {

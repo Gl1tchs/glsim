@@ -2,7 +2,8 @@
 
 #include "glgpu/backend.h"
 #include "glgpu/types.h"
-#include "glgpu/vec.h"
+#include "glgpu/vector.h"
+#include "graphics/aabb.h"
 
 namespace gl {
 
@@ -19,7 +20,7 @@ struct StaticMesh {
 	BufferDeviceAddress vertex_buffer_address;
 	uint32_t index_count;
 
-	// AABB aabb;
+	AABB aabb;
 
 	virtual ~StaticMesh();
 
