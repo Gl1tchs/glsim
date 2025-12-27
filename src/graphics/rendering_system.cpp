@@ -3,12 +3,14 @@
 #include "core/components.h"
 #include "core/event_system.h"
 #include "core/gpu_context.h"
+#include "core/registry.h"
 #include "core/transform.h"
 #include "glgpu/color.h"
 #include "glgpu/types.h"
 #include "graphics/aabb.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
+#include "graphics/material.h"
 #include "graphics/primitives.h"
 #include "graphics/renderer.h"
 
@@ -38,15 +40,13 @@ RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window
 
 	// Allocate GPU memory for scene and material data
 	_init_scene_buffer();
-	_init_material_buffer();
+	_init_default_material();
 }
 
 RenderingSystem::~RenderingSystem() {
 	_backend->device_wait();
 
 	// Clean up resources
-	_backend->uniform_set_free(_material_set);
-	_backend->buffer_free(_material_buffer);
 	_backend->buffer_free(_scene_buffer);
 }
 
@@ -75,7 +75,7 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 
 	// CPU-Side state updates
 	_update_scene_uniforms(viewproj);
-	_update_material_uniforms();
+	_update_material_uniforms(registry);
 
 	// GPU command recording
 	CommandBuffer cmd = _renderer->begin_frame(target_image);
@@ -112,7 +112,6 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 void RenderingSystem::_execute_geometry_pass(const FrameContext& ctx, Registry& registry) {
 	// Bind pipeline global state
 	_backend->command_bind_graphics_pipeline(ctx.cmd, _pipeline->pipeline);
-	_backend->command_bind_uniform_sets(ctx.cmd, _pipeline->shader, 0, { _material_set });
 
 	for (Entity entity : registry.view<Transform, MeshComponent>()) {
 		auto [transform, mc] = registry.get_many<Transform, MeshComponent>(entity);
@@ -129,6 +128,20 @@ void RenderingSystem::_execute_geometry_pass(const FrameContext& ctx, Registry& 
 		if (!aabb.is_inside_frustum(ctx.frustum)) {
 			continue;
 		}
+
+		std::shared_ptr<Material> material = default_material;
+
+		// If entitty has a material component use it
+		// otherwise use the default one
+		if (MaterialComponent* mc = registry.get<MaterialComponent>(entity)) {
+			auto& manager = registry.get_asset_manager();
+			if (auto m = manager.get<Material>(mc->material_handle)) {
+				material = m;
+			}
+		}
+
+		_backend->command_bind_uniform_sets(
+				ctx.cmd, _pipeline->shader, 0, { material->uniform_set });
 
 		// Push constants
 		PushConstants pc = {};
@@ -171,24 +184,14 @@ void RenderingSystem::_init_scene_buffer() {
 	_scene_buffer_addr = _backend->buffer_get_device_address(_scene_buffer).value();
 }
 
-void RenderingSystem::_init_material_buffer() {
-	_material_buffer =
-			_backend->buffer_create(sizeof(MaterialData),
-							BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
-									BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-							MemoryAllocationType::CPU)
-					.value();
+void RenderingSystem::_init_default_material() {
+	white_texture = Texture::create(_backend, COLOR_WHITE);
 
-	// Initialize material descriptor set
-	ShaderUniform uniform;
-	uniform.type = ShaderUniformType::UNIFORM_BUFFER;
-	uniform.binding = 0;
-	uniform.data.push_back(_material_buffer);
-
-	_material_set = _backend->uniform_set_create({ uniform }, _pipeline->shader, 0).value();
-
-	// Initialize default data
-	_update_material_uniforms();
+	default_material = std::make_shared<Material>();
+	default_material->pipeline = _pipeline;
+	default_material->base_color = COLOR_WHITE;
+	default_material->diffuse_texture = white_texture;
+	default_material->upload(_backend);
 }
 
 Mat4 RenderingSystem::_get_camera_viewproj(Registry& registry, Image target_image) {
@@ -234,11 +237,26 @@ void RenderingSystem::_update_scene_uniforms(const Mat4& viewproj) {
 	}
 }
 
-void RenderingSystem::_update_material_uniforms() {
-	MaterialData* data = (MaterialData*)_backend->buffer_map(_material_buffer).value();
-	if (data) {
-		data->base_color = COLOR_BLACK;
-		_backend->buffer_unmap(_material_buffer);
+void RenderingSystem::_update_material_uniforms(Registry& registry) {
+	for (Entity entity : registry.view<MaterialComponent>()) {
+		MaterialComponent* mc = registry.get<MaterialComponent>(entity);
+
+		auto& manager = registry.get_asset_manager();
+
+		auto material = manager.get<Material>(mc->material_handle);
+		if (!material) {
+			continue;
+		}
+
+		// Let material construct uniform buffers if needed
+		if (material->is_dirty() || !material->is_complete()) {
+			material->pipeline = _pipeline;
+			// Use default texture if none provided
+			if (!material->diffuse_texture) {
+				material->diffuse_texture = white_texture;
+			}
+			material->upload(_backend);
+		}
 	}
 }
 

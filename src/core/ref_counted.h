@@ -65,16 +65,16 @@ public:
 
 	constexpr bool is_valid() const { return _ref_count && _value; }
 
-	T& get_value() {
-		GL_ASSERT(_value);
+	T& value() {
+		assert(_value);
 		return *_value;
 	}
-	const T& get_value() const {
-		GL_ASSERT(_value);
+	const T& value() const {
+		assert(_value);
 		return *_value;
 	}
 
-	uint32_t get_ref_count() const { return _ref_count ? _ref_count->load() : 0; }
+	uint32_t ref_count() const { return _ref_count ? _ref_count->load() : 0; }
 
 	constexpr operator bool() const { return is_valid(); }
 
@@ -122,10 +122,10 @@ template <typename T> struct hash;
 
 template <typename T> struct hash<gl::RefCounted<T>> {
 	size_t operator()(const gl::RefCounted<T>& ref) const { // Check for null pointer first
-		if (ref.get_ref_count() == 0) {
+		if (ref.ref_count() == 0) {
 			return 0;
 		}
-		return std::hash<T>{}(ref.get_value());
+		return std::hash<T>{}(ref.value());
 	}
 };
 } //namespace std

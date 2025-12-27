@@ -2,29 +2,23 @@
 
 namespace gl {
 
-// TODO: we made this 32-bits for script compability but if you ever want
-// more concurrent entities (4.3B is the limit now) make this 64-bit again
-
-/**
- * 32-bit randomized unique identifier.
- */
 struct UID {
-	uint32_t value;
+	uint64_t value;
 
 	UID();
-	UID(const uint32_t& uuid);
-	UID(uint32_t&& uuid);
+	UID(const uint64_t& uid);
+	UID(uint64_t&& uuid);
 	UID(const UID&) = default;
 
 	UID& operator=(const UID& other);
 	UID& operator=(UID&& other);
 
-	UID& operator=(const uint32_t& other);
-	UID& operator=(uint32_t&& other);
+	UID& operator=(const uint64_t& other);
+	UID& operator=(uint64_t&& other);
 
 	bool is_valid() const { return value != 0; }
 
-	operator uint32_t() const { return value; }
+	operator uint64_t() const { return value; }
 };
 
 inline const UID INVALID_UID = 0;
@@ -32,9 +26,7 @@ inline const UID INVALID_UID = 0;
 } //namespace gl
 
 namespace std {
-template <typename T> struct hash;
-
 template <> struct hash<gl::UID> {
-	size_t operator()(const gl::UID& uuid) const { return (uint32_t)uuid; }
+	size_t operator()(const gl::UID& uuid) const { return (uint64_t)uuid; }
 };
 } //namespace std

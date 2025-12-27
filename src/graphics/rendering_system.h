@@ -7,8 +7,10 @@
 #include "glgpu/matrix.h"
 #include "glgpu/types.h"
 #include "graphics/graphics_pipeline.h"
+#include "graphics/material.h"
 #include "graphics/mesh.h"
 #include "graphics/renderer.h"
+#include "graphics/texture.h"
 #include "graphics/window.h"
 
 #ifndef GL_HEADLESS
@@ -47,7 +49,7 @@ private:
 
 	void _init_scene_buffer();
 
-	void _init_material_buffer();
+	void _init_default_material();
 
 	// Update helpers
 
@@ -55,7 +57,7 @@ private:
 
 	void _update_scene_uniforms(const Mat4& viewproj);
 
-	void _update_material_uniforms();
+	void _update_material_uniforms(Registry& registry);
 
 	RenderingAttachment _create_color_attachment(Image target);
 
@@ -72,8 +74,8 @@ private:
 	Buffer _scene_buffer;
 	BufferDeviceAddress _scene_buffer_addr;
 
-	Buffer _material_buffer;
-	UniformSet _material_set;
+	std::shared_ptr<Texture> white_texture;
+	std::shared_ptr<Material> default_material;
 
 	struct {
 		std::shared_ptr<StaticMesh> cube;

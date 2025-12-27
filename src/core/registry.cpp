@@ -133,4 +133,6 @@ bool Registry::has(Entity entity, uint32_t component_id) {
 	return _entities[get_entity_index(entity)].mask.test(component_id);
 }
 
+AssetManager& Registry::get_asset_manager() { return _asset_manager; }
+
 } //namespace gl

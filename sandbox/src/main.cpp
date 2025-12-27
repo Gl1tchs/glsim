@@ -4,6 +4,7 @@
 #include "core/input.h"
 #include "core/transform.h"
 #include "core/world.h"
+#include "glgpu/color.h"
 #include "graphics/rendering_system.h"
 #include "graphics/window.h"
 #include "physics/physics_system.h"
@@ -30,6 +31,12 @@ int main(int argc, char* argv[]) {
 	}
 
 	auto entity = world.spawn();
+
+	std::shared_ptr<Material> material = std::make_shared<Material>();
+	material->base_color = COLOR_BLUE;
+
+	auto mc = world.assign<MaterialComponent>(entity);
+	mc->material_handle = world.get_asset_manager().register_asset(material);
 
 	auto mesh = world.assign<MeshComponent>(entity);
 	mesh->type = PrimitiveType::SPHERE;

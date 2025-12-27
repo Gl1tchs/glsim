@@ -1,5 +1,6 @@
 #pragma once
 
+#include "asset/asset_registry.h"
 #include "graphics/camera.h"
 
 namespace gl {
@@ -26,6 +27,10 @@ enum class PrimitiveType : uint32_t {
 
 struct MeshComponent {
 	PrimitiveType type = PrimitiveType::CUBE;
+};
+
+struct MaterialComponent {
+	AssetHandle material_handle;
 };
 
 } //namespace gl

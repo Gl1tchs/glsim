@@ -1,5 +1,7 @@
 #pragma once
 
+#include "asset/asset_manager.h"
+
 namespace gl {
 
 // TODO: dynamically allocate
@@ -181,11 +183,15 @@ public:
 	 */
 	template <typename... TComponents> SceneView<TComponents...> view();
 
+	AssetManager& get_asset_manager();
+
 private:
 	uint32_t _entity_counter = 0;
 	EntityContainer _entities;
 	std::queue<Entity> _free_indices;
 	std::vector<std::shared_ptr<ComponentPool>> _component_pools;
+
+	AssetManager _asset_manager;
 };
 
 } //namespace gl
