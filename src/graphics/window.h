@@ -9,7 +9,7 @@ namespace gl {
 
 class Window {
 public:
-	Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title);
+	Window(GpuContext& ctx, const Vec2u& size, const char* title);
 	~Window();
 
 	bool should_close() const;
@@ -19,26 +19,26 @@ public:
 	/**
 	 * @returns `Image` handle if succeed, `GL_NULL_HANDLE` otherwise
 	 */
-	Image get_target(Semaphore p_wait_sem);
+	Image get_target(Semaphore wait_sem);
 
-	void present(Semaphore p_signal_sem);
+	void present(Semaphore signal_sem);
 
-	void on_resize(const Vec2u& p_size);
+	void on_resize(const Vec2u& size);
 
 	Vec2u get_size() const;
 
 	DataFormat get_swapchain_format() const;
 
 private:
-	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<RenderBackend> _backend;
 
-	SDL_Window* window;
-	Swapchain swapchain;
+	SDL_Window* _window;
+	Swapchain _swapchain;
 
-	CommandQueue graphics_queue;
-	CommandQueue present_queue;
+	CommandQueue _graphics_queue;
+	CommandQueue _present_queue;
 
-	bool window_should_close = false;
+	bool _window_should_close = false;
 };
 
 } //namespace gl

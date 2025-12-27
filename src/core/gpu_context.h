@@ -12,7 +12,7 @@ public:
 	std::shared_ptr<RenderBackend> get_backend();
 
 private:
-	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<RenderBackend> _backend;
 };
 
 } //namespace gl

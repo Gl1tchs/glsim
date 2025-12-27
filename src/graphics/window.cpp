@@ -12,9 +12,9 @@
 
 namespace gl {
 
-Window::Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title) :
-		backend(p_ctx.get_backend()) {
-	if (!backend->is_swapchain_supported()) {
+Window::Window(GpuContext& ctx, const Vec2u& size, const char* title) :
+		_backend(ctx.get_backend()) {
+	if (!_backend->is_swapchain_supported()) {
 		GL_ASSERT(false, "[Window::Window()] Swapchain is not supported.");
 	}
 
@@ -23,8 +23,8 @@ Window::Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title) :
 		return;
 	}
 
-	SDL_Window* window = SDL_CreateWindow(p_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-			p_size.x, p_size.y, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+	SDL_Window* window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			size.x, size.y, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
 	if (window == nullptr) {
 		GL_LOG_ERROR("Window could not be created! SDL_Error: {}", SDL_GetError());
@@ -58,29 +58,29 @@ Window::Window(GpuContext& p_ctx, const Vec2u& p_size, const char* p_title) :
 	}
 
 	// NOTE: this will recreate the surface and very error prone.
-	GL_ASSERT(p_ctx.get_backend()->attach_surface(connection_handle, window_handle) == Error::NONE);
+	GL_ASSERT(ctx.get_backend()->attach_surface(connection_handle, window_handle).is_ok());
 
-	graphics_queue = backend->queue_get(QueueType::GRAPHICS);
-	present_queue = backend->queue_get(QueueType::PRESENT);
+	_graphics_queue = _backend->queue_get(QueueType::GRAPHICS).value();
+	_present_queue = _backend->queue_get(QueueType::PRESENT).value();
 
 	// Create swapchain
-	swapchain = backend->swapchain_create();
-	backend->swapchain_resize(graphics_queue, swapchain, p_size, true /* vsync */);
+	_swapchain = _backend->swapchain_create().value();
+	_backend->swapchain_resize(_graphics_queue, _swapchain, size, true /* vsync */);
 
-	event::subscribe<WindowCloseEvent>([&](WindowCloseEvent e) { window_should_close = true; });
+	event::subscribe<WindowCloseEvent>([&](WindowCloseEvent e) { _window_should_close = true; });
 
 	// Initialize input system
 	Input::init();
 }
 
 Window::~Window() {
-	backend->swapchain_free(swapchain);
+	_backend->swapchain_free(_swapchain);
 
-	SDL_DestroyWindow(window);
+	SDL_DestroyWindow(_window);
 	SDL_Quit();
 }
 
-bool Window::should_close() const { return window_should_close; }
+bool Window::should_close() const { return _window_should_close; }
 
 void Window::poll_events() const {
 	SDL_Event e;
@@ -146,20 +146,20 @@ void Window::poll_events() const {
 	}
 }
 
-Image Window::get_target(Semaphore p_wait_sem) {
+Image Window::get_target(Semaphore wait_sem) {
 	// Acquire the next image from the swapchain
 	// This tells the GPU: "Give me an image index I can draw into."
 	// It signals 'image_available_sem' when the image is actually ready to be written to.
 	uint32_t image_index = 0;
 	const auto acquire_result =
-			backend->swapchain_acquire_image(swapchain, p_wait_sem, &image_index);
+			_backend->swapchain_acquire_image(_swapchain, wait_sem, &image_index);
 
-	if (!acquire_result) {
-		switch (acquire_result.get_error()) {
+	if (acquire_result.is_error()) {
+		switch (acquire_result.error()) {
 			case Error::SWAPCHAIN_OUT_OF_DATE:
 				on_resize(get_size());
 				return GL_NULL_HANDLE;
-			case Error::SWAPCHAIN_LOST:
+			case Error::SWAPCHAIN_SUBOPTIMAL:
 				GL_LOG_FATAL("[Window::get_target] Failed to acquire swapchain image.");
 				return GL_NULL_HANDLE;
 			default:
@@ -170,23 +170,25 @@ Image Window::get_target(Semaphore p_wait_sem) {
 	return *acquire_result;
 }
 
-void Window::present(Semaphore p_signal_sem) {
-	if (!backend->queue_present(present_queue, swapchain, p_signal_sem)) {
+void Window::present(Semaphore signal_sem) {
+	if (!_backend->queue_present(_present_queue, _swapchain, signal_sem)) {
 		on_resize(get_size());
 	}
 }
 
-void Window::on_resize(const Vec2u& p_size) {
-	backend->device_wait();
-	backend->swapchain_resize(graphics_queue, swapchain, p_size, true);
+void Window::on_resize(const Vec2u& size) {
+	_backend->device_wait();
+	_backend->swapchain_resize(_graphics_queue, _swapchain, size, true);
 }
 
 Vec2u Window::get_size() const {
 	Vec2u size;
-	SDL_GetWindowSize(window, (int*)&size.x, (int*)&size.y);
+	SDL_GetWindowSize(_window, (int*)&size.x, (int*)&size.y);
 	return size;
 }
 
-DataFormat Window::get_swapchain_format() const { return backend->swapchain_get_format(swapchain); }
+DataFormat Window::get_swapchain_format() const {
+	return _backend->swapchain_get_format(_swapchain).value();
+}
 
-} //namespace gl
+} // namespace gl

@@ -19,12 +19,12 @@ namespace gl {
 
 class RenderingSystem : public System {
 public:
-	RenderingSystem(GpuContext& p_ctx, std::shared_ptr<Window> p_target);
+	RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> target);
 	virtual ~RenderingSystem();
 
-	void on_init(Registry& p_registry) override;
-	void on_update(Registry& p_registry, float p_dt) override;
-	void on_destroy(Registry& p_registry) override;
+	void on_init(Registry& registry) override;
+	void on_update(Registry& registry, float dt) override;
+	void on_destroy(Registry& registry) override;
 
 private:
 	// Render Passes
@@ -36,12 +36,12 @@ private:
 		Frustum frustum;
 	};
 
-	void _execute_geometry_pass(const FrameContext& p_ctx, Registry& p_registry);
+	void _execute_geometry_pass(const FrameContext& ctx, Registry& registry);
 
 private:
 	// Initialization helpers
 
-	void _init_pipelines(GpuContext& p_ctx);
+	void _init_pipelines();
 
 	void _init_primitives();
 
@@ -51,35 +51,35 @@ private:
 
 	// Update helpers
 
-	Mat4 _get_camera_viewproj(Registry& p_registry, Image p_target_image);
+	Mat4 _get_camera_viewproj(Registry& registry, Image target_image);
 
-	void _update_scene_uniforms(const Mat4& p_viewproj);
+	void _update_scene_uniforms(const Mat4& viewproj);
 
 	void _update_material_uniforms();
 
-	RenderingAttachment _create_color_attachment(Image p_target);
+	RenderingAttachment _create_color_attachment(Image target);
 
-	std::shared_ptr<StaticMesh> _resolve_mesh(PrimitiveType p_type);
+	std::shared_ptr<StaticMesh> _resolve_mesh(PrimitiveType type);
 
 private:
-	std::shared_ptr<RenderBackend> backend;
-	std::shared_ptr<Window> window;
-	std::unique_ptr<Renderer> renderer;
+	std::shared_ptr<RenderBackend> _backend;
+	std::shared_ptr<Window> _window;
+	std::unique_ptr<Renderer> _renderer;
 
 	// Scene data
-	std::unique_ptr<GraphicsPipeline> pipeline; // unlit pipeline
+	std::shared_ptr<GraphicsPipeline> _pipeline; // unlit pipeline
 
-	Buffer scene_buffer;
-	BufferDeviceAddress scene_buffer_addr;
+	Buffer _scene_buffer;
+	BufferDeviceAddress _scene_buffer_addr;
 
-	Buffer material_buffer;
-	UniformSet material_set;
+	Buffer _material_buffer;
+	UniformSet _material_set;
 
 	struct {
 		std::shared_ptr<StaticMesh> cube;
 		std::shared_ptr<StaticMesh> plane;
 		std::shared_ptr<StaticMesh> sphere;
-	} primitives;
+	} _primitives;
 };
 
 } //namespace gl

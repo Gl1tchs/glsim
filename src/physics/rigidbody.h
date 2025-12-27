@@ -19,7 +19,7 @@ struct Rigidbody {
 	bool is_static = false;
 	bool use_gravity = true;
 
-	void add_force(const Vec3f& p_force);
+	void add_force(const Vec3f& force);
 };
 
 } //namespace gl

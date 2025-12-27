@@ -14,9 +14,9 @@ struct Transform {
 	Vec3f rotation = Vec3f::zero();
 	Vec3f scale = Vec3f::one();
 
-	void translate(const Vec3f& p_translation);
+	void translate(const Vec3f& translation);
 
-	void rotate(float p_angle, const Vec3f& p_axis);
+	void rotate(float angle, const Vec3f& axis);
 
 	Vec3f get_forward() const;
 	Vec3f get_right() const;

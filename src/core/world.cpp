@@ -7,20 +7,20 @@ namespace gl {
 World::~World() { cleanup(); }
 
 void World::cleanup() {
-	for (auto& system : systems) {
+	for (auto& system : _systems) {
 		system->on_destroy(*this);
 	}
 }
 
-void World::update(float p_dt) {
-	for (auto& system : systems) {
-		system->on_update(*this, p_dt);
+void World::update(float dt) {
+	for (auto& system : _systems) {
+		system->on_update(*this, dt);
 	}
 }
 
-void World::add_system(std::shared_ptr<System> p_system) {
-	p_system->on_init(*this);
-	systems.push_back(p_system);
+void World::add_system(std::shared_ptr<System> system) {
+	system->on_init(*this);
+	_systems.push_back(system);
 }
 
 } //namespace gl

@@ -10,9 +10,9 @@ GpuContext::GpuContext() {
 		.required_features = RENDER_BACKEND_FEATURE_NONE,
 	};
 
-	backend = RenderBackend::create(create_info);
+	_backend = RenderBackend::create(create_info).value(); // must be valid
 }
 
-std::shared_ptr<RenderBackend> GpuContext::get_backend() { return backend; }
+std::shared_ptr<RenderBackend> GpuContext::get_backend() { return _backend; }
 
 } //namespace gl

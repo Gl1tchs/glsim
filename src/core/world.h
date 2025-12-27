@@ -12,12 +12,12 @@ public:
 
 	void cleanup();
 
-	void update(float p_dt);
+	void update(float dt);
 
-	void add_system(std::shared_ptr<System> p_system);
+	void add_system(std::shared_ptr<System> system);
 
 private:
-	std::vector<std::shared_ptr<System>> systems;
+	std::vector<std::shared_ptr<System>> _systems;
 };
 
 } //namespace gl

@@ -7,18 +7,18 @@ namespace gl {
 
 class PhysicsSystem : public System {
 public:
-	PhysicsSystem(GpuContext& p_ctx);
+	PhysicsSystem(GpuContext& ctx);
 	virtual ~PhysicsSystem() = default;
 
-	void on_init(Registry& p_registry) override;
-	void on_update(Registry& p_registry, float p_dt) override;
-	void on_destroy(Registry& p_registry) override;
+	void on_init(Registry& registry) override;
+	void on_update(Registry& registry, float dt) override;
+	void on_destroy(Registry& registry) override;
 
 private:
-	void _integration_phase(Registry& p_registry, float p_ts);
+	void _integration_phase(Registry& registry, float ts);
 
 private:
-	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<RenderBackend> _backend;
 };
 
 } //namespace gl

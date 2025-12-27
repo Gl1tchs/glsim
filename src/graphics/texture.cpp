@@ -9,58 +9,57 @@
 namespace gl {
 
 Texture::~Texture() {
-	backend->image_free(image);
-	backend->sampler_free(sampler);
+	_backend->image_free(_image);
+	_backend->sampler_free(_sampler);
 }
 
-std::shared_ptr<Texture> Texture::create(std::shared_ptr<RenderBackend> p_backend,
-		const Color& p_color, const Vec2u& p_size, TextureSamplerOptions p_sampler) {
-	uint32_t color_data = p_color.as_uint();
-	return Texture::create(p_backend, DataFormat::R8G8B8A8_UNORM, p_size, &color_data, p_sampler);
+std::shared_ptr<Texture> Texture::create(std::shared_ptr<RenderBackend> backend, const Color& color,
+		const Vec2u& size, TextureSamplerOptions sampler) {
+	uint32_t color_data = color.as_uint();
+	return Texture::create(backend, DataFormat::R8G8B8A8_UNORM, size, &color_data, sampler);
 }
 
-std::shared_ptr<Texture> Texture::create(std::shared_ptr<RenderBackend> p_backend,
-		DataFormat p_format, const Vec2u& p_size, const void* p_data,
-		TextureSamplerOptions p_sampler) {
+std::shared_ptr<Texture> Texture::create(std::shared_ptr<RenderBackend> backend, DataFormat format,
+		const Vec2u& size, const void* data, TextureSamplerOptions sampler_opt) {
 	ImageCreateInfo image_info = {};
-	image_info.format = p_format;
-	image_info.size = p_size;
-	image_info.data = p_data;
+	image_info.format = format;
+	image_info.size = size;
+	image_info.data = data;
 	image_info.mipmapped = true;
 
-	Image image = p_backend->image_create(image_info);
+	Image image = backend->image_create(image_info).value();
 
 	SamplerCreateInfo sampler_info = {};
-	sampler_info.min_filter = p_sampler.min_filter;
-	sampler_info.mag_filter = p_sampler.mag_filter;
-	sampler_info.wrap_u = p_sampler.wrap_u;
-	sampler_info.wrap_v = p_sampler.wrap_v;
-	sampler_info.wrap_w = p_sampler.wrap_w;
-	sampler_info.mip_levels = p_backend->image_get_mip_levels(image);
+	sampler_info.min_filter = sampler_opt.min_filter;
+	sampler_info.mag_filter = sampler_opt.mag_filter;
+	sampler_info.wrap_u = sampler_opt.wrap_u;
+	sampler_info.wrap_v = sampler_opt.wrap_v;
+	sampler_info.wrap_w = sampler_opt.wrap_w;
+	sampler_info.mip_levels = backend->image_get_mip_levels(image).value();
 
-	Sampler sampler = p_backend->sampler_create(sampler_info);
+	Sampler sampler = backend->sampler_create(sampler_info).value();
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
-	tx->backend = p_backend;
-	tx->format = p_format;
-	tx->size = p_size;
-	tx->image = image;
-	tx->sampler = sampler;
-	tx->sampler_options = p_sampler;
+	tx->_backend = backend;
+	tx->_format = format;
+	tx->_size = size;
+	tx->_image = image;
+	tx->_sampler = sampler;
+	tx->_sampler_options = sampler_opt;
 
 	return tx;
 }
 
-std::shared_ptr<Texture> Texture::load_from_file(std::shared_ptr<RenderBackend> p_backend,
-		const fs::path& p_asset_path, const TextureSamplerOptions& p_sampler) {
-	if (!fs::exists(p_asset_path)) {
+std::shared_ptr<Texture> Texture::load_from_file(std::shared_ptr<RenderBackend> backend,
+		const fs::path& path, const TextureSamplerOptions& sampler_opt) {
+	if (!fs::exists(path)) {
 		GL_LOG_ERROR(
 				"[Texture::load_from_file] Unable to load texture from file, file do not exist.");
 		return nullptr;
 	}
 
 	int w, h;
-	stbi_uc* data = stbi_load(p_asset_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
+	stbi_uc* data = stbi_load(path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
 
 	ImageCreateInfo image_info = {};
 	image_info.format = DataFormat::R8G8B8A8_UNORM;
@@ -68,47 +67,47 @@ std::shared_ptr<Texture> Texture::load_from_file(std::shared_ptr<RenderBackend> 
 	image_info.data = data;
 	image_info.mipmapped = true;
 
-	Image image = p_backend->image_create(image_info);
+	Image image = backend->image_create(image_info).value();
 
 	SamplerCreateInfo sampler_info = {};
-	sampler_info.min_filter = p_sampler.min_filter;
-	sampler_info.mag_filter = p_sampler.mag_filter;
-	sampler_info.wrap_u = p_sampler.wrap_u;
-	sampler_info.wrap_v = p_sampler.wrap_v;
-	sampler_info.wrap_w = p_sampler.wrap_w;
-	sampler_info.mip_levels = p_backend->image_get_mip_levels(image);
+	sampler_info.min_filter = sampler_opt.min_filter;
+	sampler_info.mag_filter = sampler_opt.mag_filter;
+	sampler_info.wrap_u = sampler_opt.wrap_u;
+	sampler_info.wrap_v = sampler_opt.wrap_v;
+	sampler_info.wrap_w = sampler_opt.wrap_w;
+	sampler_info.mip_levels = backend->image_get_mip_levels(image).value();
 
-	Sampler sampler = p_backend->sampler_create(sampler_info);
+	Sampler sampler = backend->sampler_create(sampler_info).value();
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
-	tx->backend = p_backend;
-	tx->format = DataFormat::R8G8B8A8_UNORM;
-	tx->size = { static_cast<uint32_t>(w), static_cast<uint32_t>(h) };
-	tx->image = image;
-	tx->sampler = sampler;
-	tx->sampler_options = p_sampler;
+	tx->_backend = backend;
+	tx->_format = DataFormat::R8G8B8A8_UNORM;
+	tx->_size = { static_cast<uint32_t>(w), static_cast<uint32_t>(h) };
+	tx->_image = image;
+	tx->_sampler = sampler;
+	tx->_sampler_options = sampler_opt;
 
 	stbi_image_free(data);
 
 	return tx;
 }
 
-ShaderUniform Texture::get_uniform(uint32_t p_binding) const {
+ShaderUniform Texture::get_uniform(uint32_t binding) const {
 	ShaderUniform uniform;
 	uniform.type = ShaderUniformType::SAMPLER_WITH_TEXTURE;
-	uniform.binding = p_binding;
-	uniform.data.push_back(sampler);
-	uniform.data.push_back(image);
+	uniform.binding = binding;
+	uniform.data.push_back(_sampler);
+	uniform.data.push_back(_image);
 
 	return uniform;
 }
 
-DataFormat Texture::get_format() const { return format; }
+DataFormat Texture::get_format() const { return _format; }
 
-const Vec2u Texture::get_size() const { return size; }
+const Vec2u Texture::get_size() const { return _size; }
 
-const Image Texture::get_image() const { return image; }
+const Image Texture::get_image() const { return _image; }
 
-const Sampler Texture::get_sampler() const { return sampler; }
+const Sampler Texture::get_sampler() const { return _sampler; }
 
 } //namespace gl

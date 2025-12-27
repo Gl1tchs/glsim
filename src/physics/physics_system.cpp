@@ -5,25 +5,25 @@
 
 namespace gl {
 
-PhysicsSystem::PhysicsSystem(GpuContext& p_ctx) { backend = p_ctx.get_backend(); }
+PhysicsSystem::PhysicsSystem(GpuContext& ctx) { _backend = ctx.get_backend(); }
 
-void PhysicsSystem::on_init(Registry& p_registry) {}
+void PhysicsSystem::on_init(Registry& registry) {}
 
-void PhysicsSystem::on_destroy(Registry& p_registry) {}
+void PhysicsSystem::on_destroy(Registry& registry) {}
 
-void PhysicsSystem::on_update(Registry& p_registry, float p_dt) {
+void PhysicsSystem::on_update(Registry& registry, float dt) {
 	// 60Hz
 	constexpr float TIME_STEP = 1.0f / 60.0f;
 	// One collision check in every 60 frames.
 	constexpr int COLLISION_STEPS = 1;
 
 	// Update physics engine
-	_integration_phase(p_registry, TIME_STEP);
+	_integration_phase(registry, TIME_STEP);
 }
 
-void PhysicsSystem::_integration_phase(Registry& p_registry, float p_ts) {
-	for (Entity entity : p_registry.view<Transform, Rigidbody>()) {
-		auto [transform, rb] = p_registry.get_many<Transform, Rigidbody>(entity);
+void PhysicsSystem::_integration_phase(Registry& registry, float ts) {
+	for (Entity entity : registry.view<Transform, Rigidbody>()) {
+		auto [transform, rb] = registry.get_many<Transform, Rigidbody>(entity);
 
 		if (rb->is_static) {
 			continue;
@@ -36,11 +36,11 @@ void PhysicsSystem::_integration_phase(Registry& p_registry, float p_ts) {
 		}
 
 		// Update velocity
-		rb->velocity += linear_acc * p_ts;
-		rb->velocity *= std::pow(1.0f - rb->linear_damping, p_ts);
+		rb->velocity += linear_acc * ts;
+		rb->velocity *= std::pow(1.0f - rb->linear_damping, ts);
 
 		// Update transform
-		transform->position += rb->velocity * p_ts;
+		transform->position += rb->velocity * ts;
 
 		// Clear accumulators
 		rb->force_acc = Vec3f::zero();

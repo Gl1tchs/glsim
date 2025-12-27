@@ -2,135 +2,135 @@
 
 namespace gl {
 
-ComponentPool::ComponentPool(size_t p_element_size) : element_size(p_element_size) {}
+ComponentPool::ComponentPool(size_t element_size) : _element_size(element_size) {}
 
 ComponentPool::~ComponentPool() {}
 
-ComponentPool::ComponentPool(const ComponentPool& p_other) : element_size(p_other.element_size) {
-	for (const auto& page : p_other.pages) {
+ComponentPool::ComponentPool(const ComponentPool& other) : _element_size(other._element_size) {
+	for (const auto& page : other._pages) {
 		if (!page) {
 			continue;
 		}
 
-		auto new_page = std::make_unique<uint8_t[]>(PAGE_SIZE * element_size);
-		std::memcpy(new_page.get(), page.get(), PAGE_SIZE * element_size);
-		pages.push_back(std::move(new_page));
+		auto new_page = std::make_unique<uint8_t[]>(PAGE_SIZE * _element_size);
+		std::memcpy(new_page.get(), page.get(), PAGE_SIZE * _element_size);
+		_pages.push_back(std::move(new_page));
 	}
 }
 
-size_t ComponentPool::get_size() const { return element_size; }
+size_t ComponentPool::get_size() const { return _element_size; }
 
-void* ComponentPool::get(size_t p_idx) {
-	const size_t page_idx = p_idx / PAGE_SIZE;
-	const size_t offset = p_idx % PAGE_SIZE;
+void* ComponentPool::get(size_t idx) {
+	const size_t page_idx = idx / PAGE_SIZE;
+	const size_t offset = idx % PAGE_SIZE;
 
-	if (page_idx >= pages.size() || !pages[page_idx]) {
+	if (page_idx >= _pages.size() || !_pages[page_idx]) {
 		return nullptr;
 	}
 
-	return pages[page_idx].get() + (offset * element_size);
+	return _pages[page_idx].get() + (offset * _element_size);
 }
 
 Registry::~Registry() { clear(); }
 
 void Registry::clear() {
 	// Clear all data
-	component_pools.clear();
-	entities.clear();
-	free_indices = {};
-	entity_counter = 0;
+	_component_pools.clear();
+	_entities.clear();
+	_free_indices = {};
+	_entity_counter = 0;
 }
 
-void Registry::copy_to(Registry& p_dest) {
-	p_dest.clear();
+void Registry::copy_to(Registry& dest) {
+	dest.clear();
 
 	// Copy trivial data
-	p_dest.entity_counter = entity_counter;
-	p_dest.free_indices = free_indices;
-	p_dest.entities = entities; // This copies versions and component masks
+	dest._entity_counter = _entity_counter;
+	dest._free_indices = _free_indices;
+	dest._entities = _entities; // This copies versions and component masks
 
 	// Prepare destination pools
-	p_dest.component_pools.resize(component_pools.size(), nullptr);
+	dest._component_pools.resize(_component_pools.size(), nullptr);
 
 	// Iterate all pools and copy component data
-	for (size_t comp_id = 0; comp_id < component_pools.size(); comp_id++) {
-		if (component_pools[comp_id] == nullptr) {
+	for (size_t comid = 0; comid < _component_pools.size(); comid++) {
+		if (_component_pools[comid] == nullptr) {
 			continue; // This component type isn't used
 		}
 
 		// Copy the components
-		const auto old_pool = component_pools[comp_id];
-		p_dest.component_pools[comp_id] = std::make_unique<ComponentPool>(*old_pool);
+		const auto old_pool = _component_pools[comid];
+		dest._component_pools[comid] = std::make_unique<ComponentPool>(*old_pool);
 	}
 }
 
 Entity Registry::spawn() {
-	if (!free_indices.empty()) {
-		uint32_t new_idx = free_indices.front();
-		free_indices.pop();
+	if (!_free_indices.empty()) {
+		uint32_t new_idx = _free_indices.front();
+		_free_indices.pop();
 
-		Entity new_id = create_entity_id(new_idx, get_entity_version(entities[new_idx].id));
+		Entity new_id = create_entity_id(new_idx, get_entity_version(_entities[new_idx].id));
 
-		entities[new_idx].id = new_id;
+		_entities[new_idx].id = new_id;
 
 		return new_id;
 	}
 
-	entities.push_back({ create_entity_id(entities.size(), 0), ComponentMask() });
+	_entities.push_back({ create_entity_id(_entities.size(), 0), ComponentMask() });
 
-	return entities.back().id;
+	return _entities.back().id;
 }
 
-bool Registry::is_valid(Entity p_entity) {
-	if (get_entity_index(p_entity) >= entities.size()) {
+bool Registry::is_valid(Entity entity) {
+	if (get_entity_index(entity) >= _entities.size()) {
 		return false;
 	}
 
-	return entities[get_entity_index(p_entity)].id == p_entity;
+	return _entities[get_entity_index(entity)].id == entity;
 }
 
-void Registry::despawn(Entity p_entity) {
-	const uint32_t entity_idx = get_entity_index(p_entity);
+void Registry::despawn(Entity entity) {
+	const uint32_t entity_idx = get_entity_index(entity);
 
-	Entity new_entity_id = create_entity_id(UINT32_MAX, get_entity_version(p_entity) + 1);
+	Entity new_entity_id = create_entity_id(UINT32_MAX, get_entity_version(entity) + 1);
 
-	entities[entity_idx].id = new_entity_id;
-	entities[entity_idx].mask.reset();
+	_entities[entity_idx].id = new_entity_id;
+	_entities[entity_idx].mask.reset();
 
-	free_indices.push(entity_idx);
+	_free_indices.push(entity_idx);
 }
 
-bool Registry::assign_id(Entity p_entity, uint32_t p_component_id) {
-	if (!is_valid(p_entity)) {
+bool Registry::assign_id(Entity entity, uint32_t component_id) {
+	if (!is_valid(entity)) {
 		return false;
 	}
 
-	entities[get_entity_index(p_entity)].mask.set(p_component_id);
+	_entities[get_entity_index(entity)].mask.set(component_id);
 
 	return true;
 }
 
-bool Registry::remove(Entity p_entity, uint32_t p_component_id) {
-	if (!is_valid(p_entity)) {
+bool Registry::remove(Entity entity, uint32_t component_id) {
+	if (!is_valid(entity)) {
 		return false;
 	}
 
-	const uint32_t entity_idx = get_entity_index(p_entity);
+	const uint32_t entity_idx = get_entity_index(entity);
 
-	if (entities[entity_idx].mask.test(p_component_id)) {
+	if (_entities[entity_idx].mask.test(component_id)) {
 		// TODO: destroy the component object
-		entities[entity_idx].mask.reset(p_component_id);
+		_entities[entity_idx].mask.reset(component_id);
 	}
 
 	return true;
 }
 
-bool Registry::has(Entity p_entity, uint32_t p_component_id) {
-	if (!is_valid(p_entity)) {
+bool Registry::has(Entity entity, uint32_t component_id) {
+	if (!is_valid(entity)) {
 		return false;
 	}
 
-	return entities[get_entity_index(p_entity)].mask.test(p_component_id);
+	return _entities[get_entity_index(entity)].mask.test(component_id);
 }
 
 } //namespace gl

@@ -24,13 +24,13 @@ struct StaticMesh {
 
 	virtual ~StaticMesh();
 
-	static std::shared_ptr<StaticMesh> create(std::shared_ptr<RenderBackend> p_backend,
-			const std::span<const MeshVertex> p_vertices, std::span<const uint32_t> p_indices);
+	static std::shared_ptr<StaticMesh> create(std::shared_ptr<RenderBackend> backend,
+			const std::span<const MeshVertex> vertices, std::span<const uint32_t> indices);
 
-	void upload(std::span<const MeshVertex> p_vertices, std::span<const uint32_t> p_indices);
+	void upload(std::span<const MeshVertex> vertices, std::span<const uint32_t> indices);
 
 private:
-	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<RenderBackend> _backend;
 };
 
 } //namespace gl

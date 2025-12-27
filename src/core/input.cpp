@@ -45,18 +45,18 @@ void Input::init() {
 			[&](const MouseScrollEvent& event) { scroll_offset = event.offset; });
 }
 
-bool Input::is_key_pressed_once(KeyCode p_key) {
+bool Input::is_key_pressed_once(KeyCode key) {
 	// if key already held return
-	if (const auto it = s_keys_held_states.find(p_key);
-			it != s_keys_held_states.end() && s_keys_held_states[p_key]) {
+	if (const auto it = s_keys_held_states.find(key);
+			it != s_keys_held_states.end() && s_keys_held_states[key]) {
 		return false;
 	}
 
-	return is_key_pressed(p_key);
+	return is_key_pressed(key);
 }
 
-bool Input::is_key_pressed(KeyCode p_key) {
-	const auto it = s_key_press_states.find(p_key);
+bool Input::is_key_pressed(KeyCode key) {
+	const auto it = s_key_press_states.find(key);
 	if (it == s_key_press_states.end()) {
 		return false;
 	}
@@ -65,20 +65,20 @@ bool Input::is_key_pressed(KeyCode p_key) {
 
 	if (pressed) {
 		// if key haven't held add
-		if (const auto it = s_keys_held_states.find(p_key);
+		if (const auto it = s_keys_held_states.find(key);
 				it == s_keys_held_states.end() || // if doesn't exists
-				(it != s_keys_held_states.end() && !s_keys_held_states[p_key])) //if exists but
-																				//havent pressed
+				(it != s_keys_held_states.end() && !s_keys_held_states[key])) //if exists but
+																			  //havent pressed
 		{
-			s_keys_held_states[p_key] = true;
+			s_keys_held_states[key] = true;
 		}
 	}
 
 	return pressed;
 }
 
-bool Input::is_key_released(KeyCode p_key) {
-	const auto it = s_key_release_states.find(p_key);
+bool Input::is_key_released(KeyCode key) {
+	const auto it = s_key_release_states.find(key);
 	if (it == s_key_release_states.end()) {
 		return false;
 	}
@@ -86,16 +86,16 @@ bool Input::is_key_released(KeyCode p_key) {
 	return it->second;
 }
 
-bool Input::is_mouse_pressed(MouseButton p_button) {
-	const auto it = s_mouse_press_states.find(p_button);
+bool Input::is_mouse_pressed(MouseButton button) {
+	const auto it = s_mouse_press_states.find(button);
 	if (it != s_mouse_press_states.end()) {
 		return it->second;
 	}
 	return false;
 }
 
-bool Input::is_mouse_released(MouseButton p_button) {
-	const auto it = s_mouse_release_states.find(p_button);
+bool Input::is_mouse_released(MouseButton button) {
+	const auto it = s_mouse_release_states.find(button);
 	if (it != s_mouse_release_states.end()) {
 		return it->second;
 	}

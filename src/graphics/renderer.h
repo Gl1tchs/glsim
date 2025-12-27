@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/gpu_context.h"
 #include "glgpu/backend.h"
 #include "glgpu/types.h"
 
@@ -23,7 +22,7 @@ struct FrameData {
  */
 class Renderer {
 public:
-	Renderer(GpuContext& p_ctx);
+	Renderer(std::shared_ptr<RenderBackend> p_backend);
 	~Renderer();
 
 	/**
@@ -49,17 +48,17 @@ private:
 	FrameData& _get_current_frame();
 
 private:
-	std::shared_ptr<RenderBackend> backend;
-	CommandQueue graphics_queue;
+	std::shared_ptr<RenderBackend> _backend;
+	CommandQueue _graphics_queue;
 
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 3;
 
-	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
-	uint32_t frame_number = 0;
+	FrameData _frames[SWAPCHAIN_BUFFER_SIZE];
+	uint32_t _frame_number = 0;
 
 	// Render state
-	Image target_image = GL_NULL_HANDLE;
-	bool to_present = false;
+	Image _target_image = GL_NULL_HANDLE;
+	bool _to_present = false;
 };
 
 } //namespace gl

@@ -2,6 +2,6 @@
 
 namespace gl {
 
-void Rigidbody::add_force(const Vec3f& p_force) { force_acc += p_force; }
+void Rigidbody::add_force(const Vec3f& force) { force_acc += force; }
 
 } //namespace gl

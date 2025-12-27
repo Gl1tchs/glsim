@@ -2,10 +2,10 @@
 
 namespace gl {
 
-void Transform::translate(const Vec3f& p_translation) { position = position + p_translation; }
+void Transform::translate(const Vec3f& translation) { position = position + translation; }
 
-void Transform::rotate(const float p_angle, const Vec3f& p_axis) {
-	rotation = rotation + (p_axis * p_angle);
+void Transform::rotate(const float angle, const Vec3f& axis) {
+	rotation = rotation + (axis * angle);
 }
 
 Vec3f Transform::get_forward() const {

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/gpu_context.h"
 #include "glgpu/backend.h"
 #include "glgpu/types.h"
 
@@ -26,11 +25,13 @@ struct GraphicsPipeline {
 	Pipeline pipeline;
 	Shader shader;
 
-	GraphicsPipeline(GpuContext& p_ctx, const GraphicsPipelineCreateInfo& p_info);
 	~GraphicsPipeline();
 
+	static std::shared_ptr<GraphicsPipeline> create(
+			std::shared_ptr<RenderBackend> backend, const GraphicsPipelineCreateInfo& info);
+
 private:
-	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<RenderBackend> _backend;
 };
 
 } //namespace gl
