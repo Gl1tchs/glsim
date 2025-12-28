@@ -18,18 +18,30 @@ layout(buffer_reference, std430) readonly buffer SceneBuffer {
     mat4 view_projection;
 };
 
-layout(push_constant, std430) uniform constants {
+struct InstanceData {
     mat4 transform;
+    uint material_id;
+};
+
+layout(buffer_reference, std430) readonly buffer InstanceBuffer {
+    InstanceData instances[];
+};
+
+struct MaterialData {
+    vec4 base_color;
+};
+
+layout(buffer_reference, std430) readonly buffer MaterialBuffer {
+    MaterialData materials[];
+};
+
+layout(push_constant, std430) uniform constants {
     VertexBuffer vertex_buffer;
     SceneBuffer scene_buffer;
-}
-u_push_constants;
-
-layout(set = 0, binding = 0) uniform MaterialData {
-    vec4 base_color;
-}
-u_material_data;
-
-layout(set = 0, binding = 1) uniform sampler2D u_diffuse_texture;
+    InstanceBuffer instance_buffer;
+    MaterialBuffer material_buffer;
+    uint base_instance_offset;
+    uint __padding;
+};
 
 #endif // UNLIT_COMMON_GLSL

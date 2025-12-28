@@ -10,7 +10,6 @@
 #include "graphics/aabb.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_pipeline.h"
-#include "graphics/material.h"
 #include "graphics/primitives.h"
 #include "graphics/renderer.h"
 
@@ -21,13 +20,21 @@ struct SceneData {
 };
 
 struct PushConstants {
-	Mat4 transform;
 	BufferDeviceAddress vertex_buffer_addr;
 	BufferDeviceAddress scene_buffer_addr;
+	BufferDeviceAddress instance_buffer_addr;
+	BufferDeviceAddress material_buffer_addr;
+	uint32_t base_instance_offset;
 };
 
 struct MaterialData {
 	Color base_color;
+};
+
+struct InstanceData {
+	Mat4 transform;
+	uint32_t material_id;
+	uint32_t padding[3];
 };
 
 RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window) :
@@ -39,7 +46,7 @@ RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window
 	_init_primitives();
 
 	// Allocate GPU memory for scene and material data
-	_init_scene_buffer();
+	_init_buffers();
 	_init_default_material();
 }
 
@@ -48,6 +55,8 @@ RenderingSystem::~RenderingSystem() {
 
 	// Clean up resources
 	_backend->buffer_free(_scene_buffer);
+	_backend->buffer_free(_instance_buffer);
+	_backend->buffer_free(_material_buffer);
 }
 
 void RenderingSystem::on_init(Registry& registry) {
@@ -75,7 +84,8 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 
 	// CPU-Side state updates
 	_update_scene_uniforms(viewproj);
-	_update_material_uniforms(registry);
+
+	_update_material_buffer(registry);
 
 	// GPU command recording
 	CommandBuffer cmd = _renderer->begin_frame(target_image);
@@ -110,50 +120,73 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 }
 
 void RenderingSystem::_execute_geometry_pass(const FrameContext& ctx, Registry& registry) {
-	// Bind pipeline global state
 	_backend->command_bind_graphics_pipeline(ctx.cmd, _pipeline->pipeline);
+
+	std::unordered_map<std::shared_ptr<StaticMesh>, std::vector<InstanceData>> batches;
 
 	for (Entity entity : registry.view<Transform, MeshComponent>()) {
 		auto [transform, mc] = registry.get_many<Transform, MeshComponent>(entity);
+		auto mesh = _resolve_mesh(mc->type);
 
-		std::shared_ptr<StaticMesh> mesh = _resolve_mesh(mc->type);
 		if (!mesh) {
 			continue;
 		}
 
-		const Mat4 transform_mat = transform->to_mat4();
+		Mat4 model = transform->to_mat4();
 
-		// If objects is not inside of the view frustum, discard it.
-		const AABB aabb = mesh->aabb.transform(transform_mat);
-		if (!aabb.is_inside_frustum(ctx.frustum)) {
+		// Culling
+		if (!mesh->aabb.transform(model).is_inside_frustum(ctx.frustum)) {
 			continue;
 		}
 
-		std::shared_ptr<Material> material = default_material;
-
-		// If entitty has a material component use it
-		// otherwise use the default one
-		if (MaterialComponent* mc = registry.get<MaterialComponent>(entity)) {
-			auto& manager = registry.get_asset_manager();
-			if (auto m = manager.get<Material>(mc->material_handle)) {
-				material = m;
-			}
+		// Resolve Material ID
+		uint32_t mat_id = 0; // Default material index
+		if (_entity_material_map.contains(entity)) {
+			mat_id = _entity_material_map[entity];
 		}
 
-		_backend->command_bind_uniform_sets(
-				ctx.cmd, _pipeline->shader, 0, { material->uniform_set });
+		// Push full struct
+		InstanceData instance = {};
+		instance.transform = model;
+		instance.material_id = mat_id;
 
-		// Push constants
+		batches[mesh].push_back(instance);
+	}
+
+	// Structure for command recording
+	struct DrawCommand {
+		std::shared_ptr<StaticMesh> mesh;
+		uint32_t instance_count;
+		uint32_t first_instance_index;
+	};
+	std::vector<DrawCommand> commands;
+
+	size_t current_offset = 0;
+	InstanceData* mapped_data = (InstanceData*)_backend->buffer_map(_instance_buffer).value();
+
+	for (auto& [mesh, instances] : batches) {
+		const uint32_t count = static_cast<uint32_t>(instances.size());
+
+		memcpy(mapped_data + current_offset, instances.data(), count * sizeof(InstanceData));
+
+		commands.push_back({ mesh, count, (uint32_t)current_offset });
+		current_offset += count;
+	}
+	_backend->buffer_unmap(_instance_buffer);
+
+	// Draw
+	for (const auto& cmd : commands) {
 		PushConstants pc = {};
-		pc.transform = transform_mat;
-		pc.vertex_buffer_addr = mesh->vertex_buffer_address;
+		pc.vertex_buffer_addr = cmd.mesh->vertex_buffer_address;
 		pc.scene_buffer_addr = _scene_buffer_addr;
+		pc.instance_buffer_addr = _instance_buffer_addr;
+		pc.material_buffer_addr = _material_buffer_addr;
+		pc.base_instance_offset = cmd.first_instance_index;
 
 		_backend->command_push_constants(ctx.cmd, _pipeline->shader, 0, sizeof(PushConstants), &pc);
 
-		// Draw call
-		_backend->command_bind_index_buffer(ctx.cmd, mesh->index_buffer, 0, IndexType::UINT32);
-		_backend->command_draw_indexed(ctx.cmd, mesh->index_count);
+		_backend->command_bind_index_buffer(ctx.cmd, cmd.mesh->index_buffer, 0, IndexType::UINT32);
+		_backend->command_draw_indexed(ctx.cmd, cmd.mesh->index_count, cmd.instance_count);
 	}
 }
 
@@ -174,7 +207,7 @@ void RenderingSystem::_init_primitives() {
 	_primitives.sphere = create_sphere_mesh(_backend);
 }
 
-void RenderingSystem::_init_scene_buffer() {
+void RenderingSystem::_init_buffers() {
 	_scene_buffer =
 			_backend->buffer_create(sizeof(SceneData),
 							BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
@@ -182,16 +215,24 @@ void RenderingSystem::_init_scene_buffer() {
 							MemoryAllocationType::CPU)
 					.value();
 	_scene_buffer_addr = _backend->buffer_get_device_address(_scene_buffer).value();
+
+	_instance_buffer = _backend->buffer_create(sizeof(InstanceData) * MAX_INSTANCES,
+									   BUFFER_USAGE_STORAGE_BUFFER_BIT |
+											   BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+									   MemoryAllocationType::CPU)
+							   .value();
+	_instance_buffer_addr = _backend->buffer_get_device_address(_instance_buffer).value();
+
+	_material_buffer = _backend->buffer_create(sizeof(MaterialData) * MAX_INSTANCES,
+									   BUFFER_USAGE_STORAGE_BUFFER_BIT |
+											   BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+									   MemoryAllocationType::CPU)
+							   .value();
+	_material_buffer_addr = _backend->buffer_get_device_address(_material_buffer).value();
 }
 
 void RenderingSystem::_init_default_material() {
-	white_texture = Texture::create(_backend, COLOR_WHITE);
-
-	default_material = std::make_shared<Material>();
-	default_material->pipeline = _pipeline;
-	default_material->base_color = COLOR_WHITE;
-	default_material->diffuse_texture = white_texture;
-	default_material->upload(_backend);
+	_white_texture = Texture::create(_backend, COLOR_WHITE);
 }
 
 Mat4 RenderingSystem::_get_camera_viewproj(Registry& registry, Image target_image) {
@@ -237,27 +278,25 @@ void RenderingSystem::_update_scene_uniforms(const Mat4& viewproj) {
 	}
 }
 
-void RenderingSystem::_update_material_uniforms(Registry& registry) {
+void RenderingSystem::_update_material_buffer(Registry& registry) {
+	size_t offset = 0;
+
+	_entity_material_map.clear(); // Reset map for this frame
+
+	MaterialData* mapped_data = (MaterialData*)_backend->buffer_map(_material_buffer).value();
+
 	for (Entity entity : registry.view<MaterialComponent>()) {
 		MaterialComponent* mc = registry.get<MaterialComponent>(entity);
 
-		auto& manager = registry.get_asset_manager();
+		MaterialData* data = mapped_data + offset;
+		data->base_color = mc->base_color;
 
-		auto material = manager.get<Material>(mc->material_handle);
-		if (!material) {
-			continue;
-		}
+		// Save the index
+		_entity_material_map.insert_or_assign(entity, offset);
 
-		// Let material construct uniform buffers if needed
-		if (material->is_dirty() || !material->is_complete()) {
-			material->pipeline = _pipeline;
-			// Use default texture if none provided
-			if (!material->diffuse_texture) {
-				material->diffuse_texture = white_texture;
-			}
-			material->upload(_backend);
-		}
+		offset++;
 	}
+	_backend->buffer_unmap(_material_buffer);
 }
 
 RenderingAttachment RenderingSystem::_create_color_attachment(Image target) {

@@ -25,43 +25,51 @@ int main(int argc, char* argv[]) {
 	Entity camera = world.spawn();
 	{
 		auto cam_transform = world.assign<Transform>(camera);
-		cam_transform->position.z = 5;
+		cam_transform->position.z = 15;
 
 		auto cc = world.assign<CameraComponent>(camera);
 	}
 
-	auto entity = world.spawn();
+	Entity player = world.spawn();
+	auto player_rb = world.assign<Rigidbody>(player);
+	player_rb->use_gravity = false;
+	world.assign<Transform>(player)->scale = Vec3f(0.5f);
+	world.assign<MeshComponent>(player)->type = PrimitiveType::SPHERE;
+	world.assign<MaterialComponent>(player)->base_color = COLOR_CYAN;
 
-	std::shared_ptr<Material> material = std::make_shared<Material>();
-	material->base_color = COLOR_BLUE;
+	for (int i = 0; i < 20; i++) {
+		Entity sphere = world.spawn();
 
-	auto mc = world.assign<MaterialComponent>(entity);
-	mc->material_handle = world.get_asset_manager().register_asset(material);
+		auto transform = world.assign<Transform>(sphere);
+		transform->position =
+				Vec3f((float)(i % 5) * 2.0f - 4.0f, ((float)i / 5.0f) * 2.0f - 4.0f, 0.0f);
+		transform->scale = Vec3f(0.5f);
 
-	auto mesh = world.assign<MeshComponent>(entity);
-	mesh->type = PrimitiveType::SPHERE;
+		auto mc = world.assign<MaterialComponent>(sphere);
+		mc->base_color = COLOR_WHITE;
 
-	auto transform = world.assign<Transform>(entity);
-	transform->scale = Vec3f(0.25f);
+		auto mesh = world.assign<MeshComponent>(sphere);
+		mesh->type = PrimitiveType::SPHERE;
 
-	auto rb = world.assign<Rigidbody>(entity);
-	rb->use_gravity = false;
+		auto rb = world.assign<Rigidbody>(sphere);
+		rb->use_gravity = false;
+	}
 
 	while (!window->should_close()) {
 		window->poll_events();
 
+		float force = 5.0f;
 		if (Input::is_key_pressed(KeyCode::D)) {
-			rb->add_force(Vec3f::right());
+			player_rb->add_force(Vec3f::right() * force);
 		}
 		if (Input::is_key_pressed(KeyCode::A)) {
-			rb->add_force(-Vec3f::right());
+			player_rb->add_force(-Vec3f::right() * force);
 		}
-
 		if (Input::is_key_pressed(KeyCode::W)) {
-			rb->add_force(Vec3f::up());
+			player_rb->add_force(Vec3f::up() * force);
 		}
 		if (Input::is_key_pressed(KeyCode::S)) {
-			rb->add_force(-Vec3f::up());
+			player_rb->add_force(-Vec3f::up() * force);
 		}
 
 		world.update(1 / 144.0f);

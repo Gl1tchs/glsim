@@ -24,7 +24,9 @@ static std::vector<uint32_t> _get_spirv_data(const std::string& path) {
 
 	const uint32_t* bundle_data = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
 
-	return std::vector<uint32_t>(bundle_data, bundle_data + shader_data.size);
+	size_t word_count = shader_data.size / sizeof(uint32_t);
+
+	return std::vector<uint32_t>(bundle_data, bundle_data + word_count);
 }
 
 std::shared_ptr<GraphicsPipeline> GraphicsPipeline::create(

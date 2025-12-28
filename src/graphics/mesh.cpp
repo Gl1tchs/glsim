@@ -22,15 +22,15 @@ std::shared_ptr<StaticMesh> StaticMesh::create(std::shared_ptr<RenderBackend> ba
 }
 
 static AABB _get_aabb_from_vertices(std::span<const MeshVertex> vertices) {
-	Vec3f min = Vec3f(std::numeric_limits<float>::max());
-	Vec3f max = Vec3f(std::numeric_limits<float>::lowest());
+	Vec3f min(std::numeric_limits<float>::max());
+	Vec3f max(std::numeric_limits<float>::lowest());
 
 	for (const auto& v : vertices) {
 		min = math::min(min, v.position);
 		max = math::max(max, v.position);
 	}
 
-	return { min, max };
+	return AABB{ min, max };
 }
 
 void StaticMesh::upload(std::span<const MeshVertex> vertices, std::span<const uint32_t> indices) {

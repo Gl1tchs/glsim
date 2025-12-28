@@ -7,7 +7,6 @@
 #include "glgpu/matrix.h"
 #include "glgpu/types.h"
 #include "graphics/graphics_pipeline.h"
-#include "graphics/material.h"
 #include "graphics/mesh.h"
 #include "graphics/renderer.h"
 #include "graphics/texture.h"
@@ -18,6 +17,8 @@
 #endif
 
 namespace gl {
+
+constexpr size_t MAX_INSTANCES = 1000;
 
 class RenderingSystem : public System {
 public:
@@ -47,7 +48,7 @@ private:
 
 	void _init_primitives();
 
-	void _init_scene_buffer();
+	void _init_buffers();
 
 	void _init_default_material();
 
@@ -57,7 +58,7 @@ private:
 
 	void _update_scene_uniforms(const Mat4& viewproj);
 
-	void _update_material_uniforms(Registry& registry);
+	void _update_material_buffer(Registry& registry);
 
 	RenderingAttachment _create_color_attachment(Image target);
 
@@ -74,8 +75,16 @@ private:
 	Buffer _scene_buffer;
 	BufferDeviceAddress _scene_buffer_addr;
 
-	std::shared_ptr<Texture> white_texture;
-	std::shared_ptr<Material> default_material;
+	Buffer _instance_buffer;
+	BufferDeviceAddress _instance_buffer_addr;
+
+	Buffer _material_buffer;
+	BufferDeviceAddress _material_buffer_addr;
+
+	std::unordered_map<Entity, size_t> _entity_material_map;
+
+	std::vector<std::shared_ptr<Texture>> _textures;
+	std::shared_ptr<Texture> _white_texture;
 
 	struct {
 		std::shared_ptr<StaticMesh> cube;
