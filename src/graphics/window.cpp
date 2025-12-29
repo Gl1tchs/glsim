@@ -13,7 +13,7 @@
 namespace gl {
 
 Window::Window(GpuContext& ctx, const Vec2u& size, const char* title) :
-		_backend(ctx.get_backend()) {
+		_backend(ctx.get_backend()), _size(size) {
 	if (!_backend->is_swapchain_supported()) {
 		GL_ASSERT(false, "[Window::Window()] Swapchain is not supported.");
 	}
@@ -91,8 +91,11 @@ void Window::poll_events() const {
 
 		if (e.type == SDL_WINDOWEVENT) {
 			if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+				Vec2u new_size((uint32_t)e.window.data1, (uint32_t)e.window.data2);
+
+				_size = new_size;
 				event::notify<WindowResizeEvent>(WindowResizeEvent{
-						.size = { (uint32_t)e.window.data1, (uint32_t)e.window.data2 },
+						.size = new_size,
 				});
 			} else if (e.window.event == SDL_WINDOWEVENT_CLOSE) {
 				event::notify<WindowCloseEvent>(WindowCloseEvent{});
@@ -181,11 +184,7 @@ void Window::on_resize(const Vec2u& size) {
 	_backend->swapchain_resize(_graphics_queue, _swapchain, size, true);
 }
 
-Vec2u Window::get_size() const {
-	Vec2u size;
-	SDL_GetWindowSize(_window, (int*)&size.x, (int*)&size.y);
-	return size;
-}
+const Vec2u& Window::get_size() const { return _size; }
 
 DataFormat Window::get_swapchain_format() const {
 	return _backend->swapchain_get_format(_swapchain).value();

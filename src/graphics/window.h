@@ -25,12 +25,14 @@ public:
 
 	void on_resize(const Vec2u& size);
 
-	Vec2u get_size() const;
+	const Vec2u& get_size() const;
 
 	DataFormat get_swapchain_format() const;
 
 private:
 	std::shared_ptr<RenderBackend> _backend;
+
+	mutable Vec2u _size;
 
 	SDL_Window* _window;
 	Swapchain _swapchain;
