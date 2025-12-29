@@ -1,5 +1,5 @@
-#ifndef UNLIT_COMMON_GLSL
-#define UNLIT_COMMON_GLSL
+#ifndef COMMON_GLSL
+#define COMMON_GLSL
 
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_nonuniform_qualifier : require
@@ -52,4 +52,4 @@ layout(push_constant, std430) uniform constants {
 // binding count of 1000
 layout(set = 0, binding = 0) uniform sampler2D h_global_textures[];
 
-#endif // UNLIT_COMMON_GLSL
+#endif // COMMON_GLSL

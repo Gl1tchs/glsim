@@ -12,11 +12,11 @@ layout(set = 0, binding = 0) uniform SSAOData {
 
 layout(set = 0, binding = 1) uniform sampler2D g_position;
 layout(set = 0, binding = 2) uniform sampler2D g_normal;
-layout(set = 0, binding = 3, rgba8) coherent uniform image2D g_albedo;
+layout(set = 0, binding = 3, r8) coherent uniform image2D g_ssao;
 
 void main() {
     const ivec2 texel_coord = ivec2(gl_GlobalInvocationID.xy);
-    const ivec2 size = imageSize(g_albedo);
+    const ivec2 size = imageSize(g_ssao);
 
     if (texel_coord.x >= size.x || texel_coord.y >= size.y) return;
 
@@ -53,12 +53,5 @@ void main() {
 
     occlusion = 1.0 - (occlusion / 64.0);
 
-    // Load the current color from Albedo
-    vec4 current_albedo = imageLoad(g_albedo, texel_coord);
-
-    // Multiply RGB by occlusion, keep Alpha intact
-    vec3 final_color = current_albedo.rgb * occlusion;
-
-    // Store back into the image
-    imageStore(g_albedo, texel_coord, vec4(final_color, current_albedo.a));
+    imageStore(g_ssao, texel_coord, vec4(occlusion, 0, 0, 1));
 }

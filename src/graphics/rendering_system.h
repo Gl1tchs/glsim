@@ -47,6 +47,8 @@ private:
 	std::shared_ptr<Window> _window;
 	std::unique_ptr<Renderer> _renderer;
 
+	DataFormat _swapchain_format;
+
 	Buffer _scene_buffer;
 	BufferDeviceAddress _scene_buffer_addr;
 
@@ -54,6 +56,7 @@ private:
 	Image _g_normal = GL_NULL_HANDLE;
 	Image _g_albedo = GL_NULL_HANDLE;
 	Image _g_depth = GL_NULL_HANDLE;
+	Image _g_ssao_blurred = GL_NULL_HANDLE;
 
 	std::vector<std::unique_ptr<IRenderPass>> _render_passes;
 };

@@ -8,10 +8,12 @@
 #include "glgpu/types.h"
 #include "graphics/aabb.h"
 #include "graphics/camera.h"
-#include "graphics/geometry_pass.h"
 #include "graphics/render_pass.h"
 #include "graphics/renderer.h"
-#include "graphics/ssao_pass.h"
+
+#include "graphics/passes/geometry_pass.h"
+#include "graphics/passes/lighting_pass.h"
+#include "graphics/passes/ssao_pass.h"
 
 namespace gl {
 
@@ -22,7 +24,8 @@ struct SceneData {
 RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window) :
 		_backend(ctx.get_backend()),
 		_window(window),
-		_renderer(std::make_unique<Renderer>(_backend)) {
+		_renderer(std::make_unique<Renderer>(_backend)),
+		_swapchain_format(_window->get_swapchain_format()) {
 	_init_g_buffers(window->get_size());
 
 	// Allocate GPU memory for scene and material data
@@ -31,6 +34,7 @@ RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window
 	// Add render passes
 	_add_render_pass<GeometryPass>();
 	_add_render_pass<SSAOPass>();
+	_add_render_pass<LightingPass>();
 }
 
 RenderingSystem::~RenderingSystem() {
@@ -40,6 +44,7 @@ RenderingSystem::~RenderingSystem() {
 	_backend->image_free(_g_normal);
 	_backend->image_free(_g_albedo);
 	_backend->image_free(_g_depth);
+	_backend->image_free(_g_ssao_blurred);
 
 	_backend->buffer_free(_scene_buffer);
 }
@@ -47,6 +52,8 @@ RenderingSystem::~RenderingSystem() {
 void RenderingSystem::on_init(Registry& registry) {
 	event::subscribe<WindowResizeEvent>([&](const WindowResizeEvent& e) {
 		_window->on_resize(e.size);
+
+		// Recreate G-Buffers
 		_init_g_buffers(e.size);
 
 		RenderPassResources res = {
@@ -54,7 +61,9 @@ void RenderingSystem::on_init(Registry& registry) {
 			.g_normal = _g_normal,
 			.g_albedo = _g_albedo,
 			.g_depth = _g_depth,
+			.g_ssao = _g_ssao_blurred,
 			.scene_buffer_addr = _scene_buffer_addr,
+			.swapchain_format = _swapchain_format,
 		};
 
 		for (auto& pass : _render_passes) {
@@ -68,7 +77,9 @@ void RenderingSystem::on_init(Registry& registry) {
 		.g_normal = _g_normal,
 		.g_albedo = _g_albedo,
 		.g_depth = _g_depth,
+		.g_ssao = _g_ssao_blurred,
 		.scene_buffer_addr = _scene_buffer_addr,
+		.swapchain_format = _swapchain_format,
 	};
 
 	for (auto& pass : _render_passes) {
@@ -106,6 +117,7 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 		.dt = dt,
 		.frustum = frustum,
 		.viewproj = viewproj,
+		.swapchain_image = swapchain_image,
 	};
 
 	RenderPassResources res = {
@@ -113,25 +125,18 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 		.g_normal = _g_normal,
 		.g_albedo = _g_albedo,
 		.g_depth = _g_depth,
+		.g_ssao = _g_ssao_blurred,
 		.scene_buffer_addr = _scene_buffer_addr,
+		.swapchain_format = _swapchain_format,
 	};
 
 	for (auto& pass : _render_passes) {
 		pass->execute(ctx, registry, res);
 	}
 
-	// Copy albedo image to swapchain
+	// TODO: get layout dynamically
 	_backend->command_transition_image(
-			cmd, swapchain_image, ImageLayout::UNDEFINED, ImageLayout::TRANSFER_DST_OPTIMAL);
-	_backend->command_transition_image(
-			cmd, _g_albedo, ImageLayout::UNDEFINED, ImageLayout::TRANSFER_SRC_OPTIMAL);
-
-	Vec2u target_size = _backend->image_get_size(swapchain_image).value();
-	_backend->command_copy_image_to_image(
-			cmd, _g_albedo, swapchain_image, target_size, target_size);
-
-	_backend->command_transition_image(
-			cmd, swapchain_image, ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::PRESENT_SRC);
+			cmd, swapchain_image, ImageLayout::COLOR_ATTACHMENT_OPTIMAL, ImageLayout::PRESENT_SRC);
 
 	_renderer->end_frame();
 
@@ -148,6 +153,8 @@ void RenderingSystem::_init_g_buffers(const Vec2u& size) {
 		_backend->image_free(_g_albedo);
 	if (_g_depth)
 		_backend->image_free(_g_depth);
+	if (_g_ssao_blurred)
+		_backend->image_free(_g_ssao_blurred);
 
 	ImageCreateInfo img_info = {
 		.size = size,
@@ -166,6 +173,9 @@ void RenderingSystem::_init_g_buffers(const Vec2u& size) {
 
 	img_info.format = DataFormat::R8G8B8A8_UNORM;
 	_g_albedo = _backend->image_create(img_info).value();
+
+	img_info.format = DataFormat::R8_UNORM;
+	_g_ssao_blurred = _backend->image_create(img_info).value();
 
 	img_info.format = DataFormat::D32_SFLOAT;
 	img_info.usage = IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_STORAGE_BIT;

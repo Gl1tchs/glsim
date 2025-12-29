@@ -1,4 +1,5 @@
-#include "graphics/ssao_pass.h"
+#include "graphics/passes/ssao_pass.h"
+
 #include "core/random.h"
 #include "glgpu/types.h"
 #include "graphics/shader_library.h"
@@ -30,15 +31,17 @@ SSAOPass::~SSAOPass() {
 void SSAOPass::init(std::shared_ptr<RenderBackend> backend, RenderPassResources& res) {
 	_backend = backend;
 
-	_nearest_sampler = _backend->sampler_create({ .min_filter = ImageFiltering::NEAREST,
-														.mag_filter = ImageFiltering::NEAREST })
+	_nearest_sampler = _backend->sampler_create({
+														.min_filter = ImageFiltering::NEAREST,
+														.mag_filter = ImageFiltering::NEAREST,
+												})
 							   .value();
 
 	// Init pipelines
 	{
 		const std::vector<SpirvEntry> shader_entries = {
 			{
-					.byte_code = shader_library::get_spirv_data("post-process/SSAO.comp.spv"),
+					.byte_code = shader_library::get_spirv_data("src/ssao/ssao_calc.comp.spv"),
 					.stage = SHADER_STAGE_COMPUTE_BIT,
 			},
 		};
@@ -77,7 +80,7 @@ void SSAOPass::init(std::shared_ptr<RenderBackend> backend, RenderPassResources&
 	{
 		const std::vector<SpirvEntry> shader_entries = {
 			{
-					.byte_code = shader_library::get_spirv_data("post-process/SSAO_blur.comp.spv"),
+					.byte_code = shader_library::get_spirv_data("src/ssao/ssao_blur.comp.spv"),
 					.stage = SHADER_STAGE_COMPUTE_BIT,
 			},
 		};
@@ -97,7 +100,7 @@ void SSAOPass::execute(const FrameContext& ctx, Registry& registry, RenderPassRe
 	_backend->command_transition_image(ctx.cmd, res.g_normal, ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 	_backend->command_transition_image(
-			ctx.cmd, res.g_albedo, ImageLayout::COLOR_ATTACHMENT_OPTIMAL, ImageLayout::GENERAL);
+			ctx.cmd, res.g_ssao, ImageLayout::UNDEFINED, ImageLayout::GENERAL);
 
 	// Update SSAO data
 	SSAOData* data = (SSAOData*)_backend->buffer_map(_ssao_data).value();
@@ -119,10 +122,6 @@ void SSAOPass::execute(const FrameContext& ctx, Registry& registry, RenderPassRe
 	_backend->command_bind_uniform_sets(
 			ctx.cmd, _blur_shader, 0, { _blur_set }, PipelineType::COMPUTE);
 	_backend->command_dispatch(ctx.cmd, (size.x + 15) / 16, (size.y + 15) / 16, 1);
-
-	// Re-transition for synchronization
-	_backend->command_transition_image(
-			ctx.cmd, res.g_albedo, ImageLayout::GENERAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 }
 
 void SSAOPass::on_resize(const Vec2u& size, RenderPassResources& res) {
@@ -155,7 +154,7 @@ void SSAOPass::_init_uniforms(RenderPassResources& res) {
 
 	uniforms[3].type = ShaderUniformType::IMAGE;
 	uniforms[3].binding = 3;
-	uniforms[3].data.push_back(res.g_albedo);
+	uniforms[3].data.push_back(res.g_ssao);
 
 	_ssao_set = _backend->uniform_set_create(uniforms, _ssao_shader, 0).value();
 
@@ -170,7 +169,7 @@ void SSAOPass::_init_uniforms(RenderPassResources& res) {
 
 	uniforms[1].type = ShaderUniformType::IMAGE;
 	uniforms[1].binding = 1;
-	uniforms[1].data.push_back(res.g_albedo);
+	uniforms[1].data.push_back(res.g_ssao);
 
 	_blur_set = _backend->uniform_set_create(uniforms, _blur_shader, 0).value();
 }

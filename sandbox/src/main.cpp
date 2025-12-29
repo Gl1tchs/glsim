@@ -91,7 +91,6 @@ int main(int argc, char* argv[]) {
 
 		if (Input::is_key_pressed(KeyCode::SPACE)) {
 			player_rb->velocity = Vec3f::zero();
-			player_transform->position = Vec3f::zero();
 		}
 
 		world.update(dt);

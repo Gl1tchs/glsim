@@ -29,7 +29,6 @@ private:
 	Shader _blur_shader;
 
 	UniformSet _blur_set;
-
 	Sampler _nearest_sampler;
 };
 

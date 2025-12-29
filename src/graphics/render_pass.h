@@ -12,6 +12,7 @@ struct FrameContext {
 	float dt;
 	Frustum frustum;
 	Mat4 viewproj;
+	Image swapchain_image;
 };
 
 struct RenderPassResources {
@@ -20,8 +21,14 @@ struct RenderPassResources {
 	Image g_normal; // R16G16B16A16_SFLOAT
 	Image g_albedo; // R8G8B8A8_UNORM
 	Image g_depth; // D32_SFLOAT
+
+	Image g_ssao; // R8_UNORM
+
 	// Scene data
 	BufferDeviceAddress scene_buffer_addr;
+
+	// Misc
+	DataFormat swapchain_format;
 };
 
 class IRenderPass {

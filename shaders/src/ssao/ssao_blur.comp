@@ -3,11 +3,11 @@
 layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(set = 0, binding = 0) uniform sampler2D g_position;
-layout(set = 0, binding = 1, rgba8) coherent uniform image2D g_albedo;
+layout(set = 0, binding = 1, r8) coherent uniform image2D g_ssao;
 
 void main() {
     ivec2 texel_coord = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(g_albedo);
+    ivec2 size = imageSize(g_ssao);
     if (texel_coord.x >= size.x || texel_coord.y >= size.y) return;
 
     vec2 uv = (vec2(texel_coord) + 0.5) / vec2(size);
@@ -28,10 +28,10 @@ void main() {
             // Bilateral weight: only blur if depths are close
             float weight = 1.0 / (1.0 + abs(center_depth - neighbor_depth) * 100.0);
 
-            result += imageLoad(g_albedo, neighbor_coord) * weight;
+            result += imageLoad(g_ssao, neighbor_coord) * weight;
             total_weight += weight;
         }
     }
 
-    imageStore(g_albedo, texel_coord, result / total_weight);
+    imageStore(g_ssao, texel_coord, result / total_weight);
 }

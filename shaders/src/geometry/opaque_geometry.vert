@@ -1,6 +1,6 @@
 #version 450
 
-#include "pipelines/unlit/unlit_common.glsl"
+#include "geometry/common.glsl"
 
 layout(location = 0) out vec3 v_position;
 layout(location = 1) out vec3 v_normal;
@@ -19,7 +19,7 @@ void main() {
     gl_Position = scene_data.view_projection * frag_pos;
 
     v_position = frag_pos.xyz;
-    v_normal = vertex.normal;
+    v_normal = mat3(transpose(inverse(instance.transform))) * vertex.normal; // Transform normals
     v_uv = vec2(vertex.uv_x, vertex.uv_y);
 
     MaterialData mat = material_buffer.materials[instance.material_id];

@@ -1,4 +1,5 @@
-#include "graphics/geometry_pass.h"
+#include "graphics/passes/geometry_pass.h"
+
 #include "glgpu/color.h"
 #include "glgpu/types.h"
 #include "graphics/primitives.h"
@@ -47,8 +48,8 @@ void GeometryPass::init(std::shared_ptr<RenderBackend> backend, RenderPassResour
         .depth_attachment = DataFormat::D32_SFLOAT, // g_depth
 		.enable_depth_testing = true,
 		// NOTE: memory data is being referenced
-		.vertex_shader = "pipelines/unlit/unlit.vert.spv",
-		.fragment_shader = "pipelines/unlit/unlit.frag.spv",
+		.vertex_shader = "src/geometry/opaque_geometry.vert.spv",
+		.fragment_shader = "src/geometry/opaque_geometry.frag.spv",
 	};
 	_pipeline = GraphicsPipeline::create(_backend, create_info);
 
@@ -117,10 +118,9 @@ void GeometryPass::execute(const FrameContext& ctx, Registry& registry, RenderPa
 	color_att.image = res.g_albedo;
 	color_att.load_op = AttachmentLoadOp::CLEAR;
 	color_att.store_op = AttachmentStoreOp::STORE;
-	color_att.clear_color = Color(0.52, 0.8, 0.92); // Sky color
+	color_att.clear_color = COLOR_TRANSPARENT;
 
 	Vec2u target_size = _backend->image_get_size(res.g_albedo).value();
-
 	_backend->command_begin_rendering(
 			ctx.cmd, target_size, { pos_att, norm_att, color_att }, res.g_depth);
 	{
