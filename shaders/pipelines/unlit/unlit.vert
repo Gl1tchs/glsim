@@ -6,6 +6,7 @@ layout(location = 0) out vec3 v_position;
 layout(location = 1) out vec3 v_normal;
 layout(location = 2) out vec2 v_uv;
 layout(location = 3) out vec4 v_mat_color;
+layout(location = 4) out uint v_diffuse_tex_id;
 
 void main() {
     MeshVertex vertex = vertex_buffer.vertices[gl_VertexIndex];
@@ -23,4 +24,5 @@ void main() {
 
     MaterialData mat = material_buffer.materials[instance.material_id];
     v_mat_color = mat.base_color;
+    v_diffuse_tex_id = mat.diffuse_tex_id;
 }

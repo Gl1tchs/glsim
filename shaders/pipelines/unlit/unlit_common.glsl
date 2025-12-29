@@ -2,6 +2,7 @@
 #define UNLIT_COMMON_GLSL
 
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
 
 struct MeshVertex {
     vec3 position;
@@ -29,6 +30,8 @@ layout(buffer_reference, std430) readonly buffer InstanceBuffer {
 
 struct MaterialData {
     vec4 base_color;
+    uint diffuse_tex_id;
+    uint _padding[3];
 };
 
 layout(buffer_reference, std430) readonly buffer MaterialBuffer {
@@ -41,7 +44,12 @@ layout(push_constant, std430) uniform constants {
     InstanceBuffer instance_buffer;
     MaterialBuffer material_buffer;
     uint base_instance_offset;
-    uint __padding;
+    uint _padding;
 };
+
+// Shader variables starting with h_ will automatically
+// defined as "headless" in backend. Thus will have by default
+// binding count of 1000
+layout(set = 0, binding = 0) uniform sampler2D h_global_textures[];
 
 #endif // UNLIT_COMMON_GLSL

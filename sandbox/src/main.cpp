@@ -1,3 +1,4 @@
+#include "asset/asset_registry.h"
 #include "core/components.h"
 #include "core/event_system.h"
 #include "core/gpu_context.h"
@@ -31,11 +32,18 @@ int main(int argc, char* argv[]) {
 	}
 
 	Entity player = world.spawn();
+
 	auto player_rb = world.assign<Rigidbody>(player);
 	player_rb->use_gravity = false;
-	world.assign<Transform>(player)->scale = Vec3f(0.5f);
+
+	auto player_transform = world.assign<Transform>(player);
+	player_transform->scale = Vec3f(0.5f);
+
 	world.assign<MeshComponent>(player)->type = PrimitiveType::SPHERE;
-	world.assign<MaterialComponent>(player)->base_color = COLOR_CYAN;
+
+	auto player_mat = world.assign<MaterialComponent>(player);
+	player_mat->base_color = COLOR_WHITE;
+	player_mat->diffuse_tex_id = INVALID_ASSET_HANDLE;
 
 	for (int i = 0; i < 20; i++) {
 		Entity sphere = world.spawn();
@@ -70,6 +78,11 @@ int main(int argc, char* argv[]) {
 		}
 		if (Input::is_key_pressed(KeyCode::S)) {
 			player_rb->add_force(-Vec3f::up() * force);
+		}
+
+		if (Input::is_key_pressed(KeyCode::SPACE)) {
+			player_rb->velocity = Vec3f::zero();
+			player_transform->position = Vec3f::zero();
 		}
 
 		world.update(1 / 144.0f);

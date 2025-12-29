@@ -29,6 +29,8 @@ struct PushConstants {
 
 struct MaterialData {
 	Color base_color;
+	uint32_t diffuse_tex_id;
+	uint32_t _padding[3];
 };
 
 struct InstanceData {
@@ -46,8 +48,8 @@ RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window
 	_init_primitives();
 
 	// Allocate GPU memory for scene and material data
-	_init_buffers();
-	_init_default_material();
+	_init_scene_resources();
+	_init_material_resources();
 }
 
 RenderingSystem::~RenderingSystem() {
@@ -57,6 +59,8 @@ RenderingSystem::~RenderingSystem() {
 	_backend->buffer_free(_scene_buffer);
 	_backend->buffer_free(_instance_buffer);
 	_backend->buffer_free(_material_buffer);
+
+	_backend->uniform_set_free(_bindless_textures);
 }
 
 void RenderingSystem::on_init(Registry& registry) {
@@ -85,7 +89,7 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 	// CPU-Side state updates
 	_update_scene_uniforms(viewproj);
 
-	_update_material_buffer(registry);
+	_update_material_resources(registry);
 
 	// GPU command recording
 	CommandBuffer cmd = _renderer->begin_frame(target_image);
@@ -121,6 +125,9 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 
 void RenderingSystem::_execute_geometry_pass(const FrameContext& ctx, Registry& registry) {
 	_backend->command_bind_graphics_pipeline(ctx.cmd, _pipeline->pipeline);
+
+	// Bind bindless texture uniform set
+	_backend->command_bind_uniform_sets(ctx.cmd, _pipeline->shader, 0, { _bindless_textures });
 
 	std::unordered_map<std::shared_ptr<StaticMesh>, std::vector<InstanceData>> batches;
 
@@ -207,7 +214,7 @@ void RenderingSystem::_init_primitives() {
 	_primitives.sphere = create_sphere_mesh(_backend);
 }
 
-void RenderingSystem::_init_buffers() {
+void RenderingSystem::_init_scene_resources() {
 	_scene_buffer =
 			_backend->buffer_create(sizeof(SceneData),
 							BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
@@ -222,6 +229,10 @@ void RenderingSystem::_init_buffers() {
 									   MemoryAllocationType::CPU)
 							   .value();
 	_instance_buffer_addr = _backend->buffer_get_device_address(_instance_buffer).value();
+}
+
+void RenderingSystem::_init_material_resources() {
+	_white_texture = Texture::create(_backend, COLOR_WHITE);
 
 	_material_buffer = _backend->buffer_create(sizeof(MaterialData) * MAX_INSTANCES,
 									   BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -229,10 +240,13 @@ void RenderingSystem::_init_buffers() {
 									   MemoryAllocationType::CPU)
 							   .value();
 	_material_buffer_addr = _backend->buffer_get_device_address(_material_buffer).value();
-}
 
-void RenderingSystem::_init_default_material() {
-	_white_texture = Texture::create(_backend, COLOR_WHITE);
+	// Set = 0, Binding = 0
+	_bindless_textures =
+			_backend->uniform_set_create_bindless(_pipeline->shader, 0, 0, MAX_INSTANCES).value();
+
+	_backend->uniform_set_update_texture(
+			_bindless_textures, 0, 0, _white_texture->get_image(), _white_texture->get_sampler());
 }
 
 Mat4 RenderingSystem::_get_camera_viewproj(Registry& registry, Image target_image) {
@@ -278,7 +292,7 @@ void RenderingSystem::_update_scene_uniforms(const Mat4& viewproj) {
 	}
 }
 
-void RenderingSystem::_update_material_buffer(Registry& registry) {
+void RenderingSystem::_update_material_resources(Registry& registry) {
 	size_t offset = 0;
 
 	_entity_material_map.clear(); // Reset map for this frame
@@ -290,6 +304,18 @@ void RenderingSystem::_update_material_buffer(Registry& registry) {
 
 		MaterialData* data = mapped_data + offset;
 		data->base_color = mc->base_color;
+
+		// TODO: cache the texture, it might use the same instance
+
+		// Upload the texture
+		uint32_t tex_id = 0; // 0 is default white texture
+		if (auto texture = registry.get_asset_manager().get<Texture>(mc->diffuse_tex_id)) {
+			tex_id = offset + 1;
+			_backend->uniform_set_update_texture(
+					_bindless_textures, 0, tex_id, texture->get_image(), texture->get_sampler());
+		}
+
+		data->diffuse_tex_id = tex_id;
 
 		// Save the index
 		_entity_material_map.insert_or_assign(entity, offset);

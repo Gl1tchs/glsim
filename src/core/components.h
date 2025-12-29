@@ -1,5 +1,6 @@
 #pragma once
 
+#include "asset/asset_registry.h"
 #include "glgpu/color.h"
 #include "graphics/camera.h"
 
@@ -31,6 +32,7 @@ struct MeshComponent {
 
 struct MaterialComponent {
 	Color base_color;
+	AssetHandle diffuse_tex_id;
 };
 
 } //namespace gl

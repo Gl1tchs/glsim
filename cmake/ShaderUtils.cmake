@@ -34,6 +34,7 @@ function(compile_shader SHADER_FILE INCLUDE_DIR OUT_FILE)
         -std=450
         -O
         -fpreserve-bindings
+        -g
     )
 
     add_custom_command(

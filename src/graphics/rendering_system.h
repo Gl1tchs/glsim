@@ -48,9 +48,9 @@ private:
 
 	void _init_primitives();
 
-	void _init_buffers();
+	void _init_scene_resources();
 
-	void _init_default_material();
+	void _init_material_resources();
 
 	// Update helpers
 
@@ -58,7 +58,7 @@ private:
 
 	void _update_scene_uniforms(const Mat4& viewproj);
 
-	void _update_material_buffer(Registry& registry);
+	void _update_material_resources(Registry& registry);
 
 	RenderingAttachment _create_color_attachment(Image target);
 
@@ -81,9 +81,10 @@ private:
 	Buffer _material_buffer;
 	BufferDeviceAddress _material_buffer_addr;
 
+	UniformSet _bindless_textures;
+
 	std::unordered_map<Entity, size_t> _entity_material_map;
 
-	std::vector<std::shared_ptr<Texture>> _textures;
 	std::shared_ptr<Texture> _white_texture;
 
 	struct {
