@@ -254,7 +254,7 @@ Mat4 RenderingSystem::_get_camera_viewproj(Registry& registry, Image target_imag
 
 	float aspect_ratio = 1.0f;
 	if (size.x > 0 && size.y > 0) {
-		aspect_ratio = size.y / (float)size.x;
+		aspect_ratio = (float)size.x / size.y;
 	}
 
 	Mat4 viewproj = Mat4(1.0f);
