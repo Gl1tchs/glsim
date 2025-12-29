@@ -38,7 +38,7 @@ Renderer::~Renderer() {
 	}
 }
 
-CommandBuffer Renderer::begin_frame(Image p_target, bool p_to_present) {
+CommandBuffer Renderer::begin_frame(Image p_target) {
 	if (!p_target) {
 		GL_LOG_ERROR("[Renderer::begin_frame] Invalid target image.");
 		return GL_NULL_HANDLE;
@@ -52,10 +52,6 @@ CommandBuffer Renderer::begin_frame(Image p_target, bool p_to_present) {
 	_backend->command_reset(frame.cmd);
 	_backend->command_begin(frame.cmd);
 
-	// Image transition
-	_backend->command_transition_image(
-			frame.cmd, p_target, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-
 	// Dynamic State
 	const Vec3u extent = _backend->image_get_size(p_target).value();
 	_backend->command_set_viewport(frame.cmd, extent);
@@ -63,7 +59,6 @@ CommandBuffer Renderer::begin_frame(Image p_target, bool p_to_present) {
 
 	// Set render state
 	_target_image = p_target;
-	_to_present = p_to_present;
 
 	return frame.cmd;
 }
@@ -76,12 +71,6 @@ void Renderer::end_frame() {
 
 	FrameData& frame = _get_current_frame();
 
-	// Transition image to present layout if needed
-	if (_to_present) {
-		_backend->command_transition_image(frame.cmd, _target_image,
-				ImageLayout::COLOR_ATTACHMENT_OPTIMAL, ImageLayout::PRESENT_SRC);
-	}
-
 	_backend->command_end(frame.cmd);
 
 	// Render
@@ -90,7 +79,6 @@ void Renderer::end_frame() {
 
 	// Reset render state
 	_target_image = GL_NULL_HANDLE;
-	_to_present = false;
 
 	_frame_number++;
 }

@@ -1,43 +1,22 @@
 #include "graphics/graphics_pipeline.h"
 
-#include "shader_bundle.gen.h"
+#include "graphics/shader_library.h"
 
 namespace gl {
-
-// Get bundled spirv data
-static std::vector<uint32_t> _get_spirv_data(const std::string& path) {
-	BundleFileData shader_data = {};
-	bool shader_found = false;
-
-	for (int i = 0; i < BUNDLE_FILE_COUNT; i++) {
-		BundleFileData data = BUNDLE_FILES[i];
-		if (path == data.path) {
-			shader_data = data;
-			shader_found = true;
-			break;
-		}
-	}
-
-	if (!shader_found) {
-		return {};
-	}
-
-	const uint32_t* bundle_data = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
-
-	size_t word_count = shader_data.size / sizeof(uint32_t);
-
-	return std::vector<uint32_t>(bundle_data, bundle_data + word_count);
-}
 
 std::shared_ptr<GraphicsPipeline> GraphicsPipeline::create(
 		std::shared_ptr<RenderBackend> backend, const GraphicsPipelineCreateInfo& info) {
 	const std::vector<SpirvEntry> shader_entries = {
-		{ // Vertex shader
-				.byte_code = _get_spirv_data(info.vertex_shader),
-				.stage = SHADER_STAGE_VERTEX_BIT },
-		{ // Fragment shader
-				.byte_code = _get_spirv_data(info.fragment_shader),
-				.stage = SHADER_STAGE_FRAGMENT_BIT },
+		{
+				// Vertex shader
+				.byte_code = shader_library::get_spirv_data(info.vertex_shader),
+				.stage = SHADER_STAGE_VERTEX_BIT,
+		},
+		{
+				// Fragment shader
+				.byte_code = shader_library::get_spirv_data(info.fragment_shader),
+				.stage = SHADER_STAGE_FRAGMENT_BIT,
+		},
 	};
 
 	auto shader_res = backend->shader_create_from_bytecode(shader_entries);

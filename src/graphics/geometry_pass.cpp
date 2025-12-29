@@ -33,7 +33,7 @@ GeometryPass::~GeometryPass() {
 	_backend->uniform_set_free(_bindless_textures);
 }
 
-void GeometryPass::init(std::shared_ptr<RenderBackend> backend) {
+void GeometryPass::init(std::shared_ptr<RenderBackend> backend, RenderPassResources& res) {
 	_backend = backend;
 
 	// Init pipeline
@@ -84,6 +84,16 @@ void GeometryPass::init(std::shared_ptr<RenderBackend> backend) {
 }
 
 void GeometryPass::execute(const FrameContext& ctx, Registry& registry, RenderPassResources& res) {
+	// Transition images
+	_backend->command_transition_image(
+			ctx.cmd, res.g_position, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	_backend->command_transition_image(
+			ctx.cmd, res.g_normal, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	_backend->command_transition_image(
+			ctx.cmd, res.g_albedo, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	_backend->command_transition_image(ctx.cmd, res.g_depth, ImageLayout::UNDEFINED,
+			ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
 	// Upload materials/textures to the gpu
 	_update_material_buffers(registry);
 

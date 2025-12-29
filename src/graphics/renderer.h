@@ -30,9 +30,8 @@ public:
 	 * synchronization.
 	 *
 	 * @param p_target Target image to draw
-	 * @param p_to_present Should image layout be transitioned to PRESENT_SRC
 	 */
-	CommandBuffer begin_frame(Image p_target, bool p_to_present = false);
+	CommandBuffer begin_frame(Image p_target);
 
 	void end_frame();
 
@@ -58,7 +57,6 @@ private:
 
 	// Render state
 	Image _target_image = GL_NULL_HANDLE;
-	bool _to_present = false;
 };
 
 } //namespace gl

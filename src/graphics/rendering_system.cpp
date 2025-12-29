@@ -11,6 +11,7 @@
 #include "graphics/geometry_pass.h"
 #include "graphics/render_pass.h"
 #include "graphics/renderer.h"
+#include "graphics/ssao_pass.h"
 
 namespace gl {
 
@@ -29,6 +30,7 @@ RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window
 
 	// Add render passes
 	_add_render_pass<GeometryPass>();
+	_add_render_pass<SSAOPass>();
 }
 
 RenderingSystem::~RenderingSystem() {
@@ -46,11 +48,31 @@ void RenderingSystem::on_init(Registry& registry) {
 	event::subscribe<WindowResizeEvent>([&](const WindowResizeEvent& e) {
 		_window->on_resize(e.size);
 		_init_g_buffers(e.size);
+
+		RenderPassResources res = {
+			.g_position = _g_position,
+			.g_normal = _g_normal,
+			.g_albedo = _g_albedo,
+			.g_depth = _g_depth,
+			.scene_buffer_addr = _scene_buffer_addr,
+		};
+
+		for (auto& pass : _render_passes) {
+			pass->on_resize(e.size, res);
+		}
 	});
 
 	// Initialize render passes
+	RenderPassResources res = {
+		.g_position = _g_position,
+		.g_normal = _g_normal,
+		.g_albedo = _g_albedo,
+		.g_depth = _g_depth,
+		.scene_buffer_addr = _scene_buffer_addr,
+	};
+
 	for (auto& pass : _render_passes) {
-		pass->init(_backend);
+		pass->init(_backend, res);
 	}
 }
 
@@ -78,24 +100,15 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 	// GPU command recording
 	CommandBuffer cmd = _renderer->begin_frame(swapchain_image);
 
-	// Transition to attachment layout
-	_backend->command_transition_image(
-			cmd, _g_position, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-	_backend->command_transition_image(
-			cmd, _g_normal, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-	_backend->command_transition_image(
-			cmd, _g_albedo, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-	_backend->command_transition_image(
-			cmd, _g_depth, ImageLayout::UNDEFINED, ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
 	// Execute render passes
 	FrameContext ctx = {
 		.cmd = cmd,
 		.dt = dt,
 		.frustum = frustum,
+		.viewproj = viewproj,
 	};
 
-	RenderPassResources resources = {
+	RenderPassResources res = {
 		.g_position = _g_position,
 		.g_normal = _g_normal,
 		.g_albedo = _g_albedo,
@@ -104,14 +117,14 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 	};
 
 	for (auto& pass : _render_passes) {
-		pass->execute(ctx, registry, resources);
+		pass->execute(ctx, registry, res);
 	}
 
 	// Copy albedo image to swapchain
 	_backend->command_transition_image(
 			cmd, swapchain_image, ImageLayout::UNDEFINED, ImageLayout::TRANSFER_DST_OPTIMAL);
-	_backend->command_transition_image(cmd, _g_albedo, ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-			ImageLayout::TRANSFER_SRC_OPTIMAL);
+	_backend->command_transition_image(
+			cmd, _g_albedo, ImageLayout::UNDEFINED, ImageLayout::TRANSFER_SRC_OPTIMAL);
 
 	Vec2u target_size = _backend->image_get_size(swapchain_image).value();
 	_backend->command_copy_image_to_image(
@@ -139,7 +152,7 @@ void RenderingSystem::_init_g_buffers(const Vec2u& size) {
 	ImageCreateInfo img_info = {
 		.size = size,
 		.usage = IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_TRANSFER_SRC_BIT |
-				IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_STORAGE_BIT,
+				IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_STORAGE_BIT | IMAGE_USAGE_SAMPLED_BIT,
 		.mipmapped = false,
 		.samples = 1,
 	};

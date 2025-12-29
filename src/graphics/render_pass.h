@@ -11,6 +11,7 @@ struct FrameContext {
 	CommandBuffer cmd;
 	float dt;
 	Frustum frustum;
+	Mat4 viewproj;
 };
 
 struct RenderPassResources {
@@ -27,9 +28,10 @@ class IRenderPass {
 public:
 	virtual ~IRenderPass() = default;
 
-	virtual void init(std::shared_ptr<RenderBackend> backend) = 0;
-	virtual void execute(
-			const FrameContext& ctx, Registry& registry, RenderPassResources& resources) = 0;
+	virtual void init(std::shared_ptr<RenderBackend> backend, RenderPassResources& res) = 0;
+	virtual void execute(const FrameContext& ctx, Registry& registry, RenderPassResources& res) = 0;
+
+	virtual void on_resize(const Vec2u& size, RenderPassResources& res) {};
 };
 
 } //namespace gl

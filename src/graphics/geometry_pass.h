@@ -12,9 +12,8 @@ class GeometryPass : public IRenderPass {
 public:
 	virtual ~GeometryPass();
 
-	void init(std::shared_ptr<RenderBackend> backend) override;
-	void execute(
-			const FrameContext& ctx, Registry& registry, RenderPassResources& resources) override;
+	void init(std::shared_ptr<RenderBackend> backend, RenderPassResources& res) override;
+	void execute(const FrameContext& ctx, Registry& registry, RenderPassResources& res) override;
 
 private:
 	void _update_material_buffers(Registry& registry);

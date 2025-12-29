@@ -1,6 +1,6 @@
 #version 450
 
-#include "unlit/unlit_common.glsl"
+#include "pipelines/unlit/unlit_common.glsl"
 
 layout(location = 0) out vec3 v_position;
 layout(location = 1) out vec3 v_normal;

@@ -37,9 +37,9 @@ int main(int argc, char* argv[]) {
 	player_rb->use_gravity = false;
 
 	auto player_transform = world.assign<Transform>(player);
-	player_transform->scale = Vec3f(0.5f);
+	player_transform->scale = Vec3f(0.75f);
 
-	world.assign<MeshComponent>(player)->type = PrimitiveType::SPHERE;
+	world.assign<MeshComponent>(player)->type = PrimitiveType::CUBE;
 
 	auto player_mat = world.assign<MaterialComponent>(player);
 	player_mat->base_color = COLOR_WHITE;
@@ -64,6 +64,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	while (!window->should_close()) {
+		float dt = 1 / 144.0f;
+
 		window->poll_events();
 
 		float force = 5.0f;
@@ -80,12 +82,19 @@ int main(int argc, char* argv[]) {
 			player_rb->add_force(-Vec3f::up() * force);
 		}
 
+		if (Input::is_key_pressed(KeyCode::E)) {
+			player_transform->rotate(30 * dt, Vec3f::up());
+		}
+		if (Input::is_key_pressed(KeyCode::Q)) {
+			player_transform->rotate(-30 * dt, Vec3f::up());
+		}
+
 		if (Input::is_key_pressed(KeyCode::SPACE)) {
 			player_rb->velocity = Vec3f::zero();
 			player_transform->position = Vec3f::zero();
 		}
 
-		world.update(1 / 144.0f);
+		world.update(dt);
 	}
 
 	return 0;
