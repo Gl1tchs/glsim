@@ -8,6 +8,7 @@
 #include "glgpu/types.h"
 #include "graphics/aabb.h"
 #include "graphics/camera.h"
+#include "graphics/primitives.h"
 #include "graphics/render_pass.h"
 #include "graphics/renderer.h"
 
@@ -17,180 +18,82 @@
 
 namespace gl {
 
-struct SceneData {
-	Mat4 viewproj;
-};
-
 RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window) :
 		_backend(ctx.get_backend()),
 		_window(window),
 		_renderer(std::make_unique<Renderer>(_backend)),
-		_swapchain_format(_window->get_swapchain_format()) {
-	_init_g_buffers(window->get_size());
+		_render_graph(_backend) {
+	// Create primitives
+	_primitives.cube = create_cube_mesh(_backend);
+	_primitives.plane = create_plane_mesh(_backend);
+	_primitives.sphere = create_sphere_mesh(_backend);
 
-	// Allocate GPU memory for scene and material data
-	_init_scene_resources();
+	_white_texture = Texture::create(_backend, COLOR_WHITE);
 
 	// Add render passes
-	_add_render_pass<GeometryPass>();
-	_add_render_pass<SSAOPass>();
-	_add_render_pass<LightingPass>();
+	_render_graph.add_pass<GeometryPass>(_backend);
+	_render_graph.add_pass<SSAOPass>(_backend);
+	_render_graph.add_pass<LightingPass>(_backend, _window->get_swapchain_format());
 }
 
-RenderingSystem::~RenderingSystem() {
-	_backend->device_wait();
-
-	_backend->image_free(_g_position);
-	_backend->image_free(_g_normal);
-	_backend->image_free(_g_albedo);
-	_backend->image_free(_g_depth);
-	_backend->image_free(_g_ssao_blurred);
-
-	_backend->buffer_free(_scene_buffer);
-}
+RenderingSystem::~RenderingSystem() { _backend->device_wait(); }
 
 void RenderingSystem::on_init(Registry& registry) {
-	event::subscribe<WindowResizeEvent>([&](const WindowResizeEvent& e) {
-		_window->on_resize(e.size);
-
-		// Recreate G-Buffers
-		_init_g_buffers(e.size);
-
-		RenderPassResources res = {
-			.g_position = _g_position,
-			.g_normal = _g_normal,
-			.g_albedo = _g_albedo,
-			.g_depth = _g_depth,
-			.g_ssao = _g_ssao_blurred,
-			.scene_buffer_addr = _scene_buffer_addr,
-			.swapchain_format = _swapchain_format,
-		};
-
-		for (auto& pass : _render_passes) {
-			pass->on_resize(e.size, res);
-		}
-	});
-
-	// Initialize render passes
-	RenderPassResources res = {
-		.g_position = _g_position,
-		.g_normal = _g_normal,
-		.g_albedo = _g_albedo,
-		.g_depth = _g_depth,
-		.g_ssao = _g_ssao_blurred,
-		.scene_buffer_addr = _scene_buffer_addr,
-		.swapchain_format = _swapchain_format,
-	};
-
-	for (auto& pass : _render_passes) {
-		pass->init(_backend, res);
-	}
+	event::subscribe<WindowResizeEvent>(
+			[&](const WindowResizeEvent& e) { _window->on_resize(e.size); });
 }
 
 void RenderingSystem::on_destroy(Registry& registry) {}
 
 void RenderingSystem::on_update(Registry& registry, float dt) {
-	// Wait for previous frame to be submitted
+	// Minimized
+	if (_window->get_size().x == 0 || _window->get_size().y == 0) {
+		return;
+	}
+
 	_renderer->wait_for_frame();
 
 	Semaphore wait_sem = _renderer->get_wait_sem();
 	Semaphore signal_sem = _renderer->get_signal_sem();
 
-	Image swapchain_image = _window->get_target(wait_sem);
-	if (!swapchain_image) {
-		return; // Swapchain is likely out of date or minimized
+	Image backbuffer = _window->get_target(wait_sem);
+	if (!backbuffer) {
+		return;
 	}
 
-	// Prepare camera and frustum
-	Mat4 viewproj = _get_camera_viewproj(registry, swapchain_image);
-	Frustum frustum = Frustum::from_view_proj(viewproj);
+	//  Resolve Camera
+	const Vec2u size = _window->get_size();
+	const auto [cam_view, cam_proj, cam_pos, cam_frustum] =
+			_get_main_camera_data(registry, (float)size.x / size.y);
 
-	// CPU-Side state updates
-	_update_scene_resources(viewproj);
+	// Construct render queue
+	RenderQueue queue = _extract_render_queue(registry, cam_frustum, cam_proj * cam_view);
+	queue.camera_pos = cam_pos;
 
-	// GPU command recording
-	CommandBuffer cmd = _renderer->begin_frame(swapchain_image);
+	// Compile and execute render graph
+	VHandle backbuffer_handle = _render_graph.import_image("Backbuffer", backbuffer);
 
-	// Execute render passes
-	FrameContext ctx = {
-		.cmd = cmd,
-		.dt = dt,
-		.frustum = frustum,
-		.viewproj = viewproj,
-		.swapchain_image = swapchain_image,
-	};
+	RenderContext ctx = {};
+	ctx.backbuffer_size = _window->get_size();
+	ctx.backbuffer_format = _swapchain_format;
 
-	RenderPassResources res = {
-		.g_position = _g_position,
-		.g_normal = _g_normal,
-		.g_albedo = _g_albedo,
-		.g_depth = _g_depth,
-		.g_ssao = _g_ssao_blurred,
-		.scene_buffer_addr = _scene_buffer_addr,
-		.swapchain_format = _swapchain_format,
-	};
+	_render_graph.compile(ctx);
 
-	for (auto& pass : _render_passes) {
-		pass->execute(ctx, registry, res);
+	CommandBuffer cmd = _renderer->begin_frame(backbuffer);
+	{
+		_render_graph.execute(cmd, queue);
+
+		// Transition backbuffer for presentation
+		_render_graph.transition_image(cmd, backbuffer_handle, ImageLayout::PRESENT_SRC);
 	}
-
-	// TODO: get layout dynamically
-	_backend->command_transition_image(
-			cmd, swapchain_image, ImageLayout::COLOR_ATTACHMENT_OPTIMAL, ImageLayout::PRESENT_SRC);
-
 	_renderer->end_frame();
 
 	_window->present(signal_sem);
 }
 
-void RenderingSystem::_init_g_buffers(const Vec2u& size) {
-	// Free already existing buffers
-	if (_g_position)
-		_backend->image_free(_g_position);
-	if (_g_normal)
-		_backend->image_free(_g_normal);
-	if (_g_albedo)
-		_backend->image_free(_g_albedo);
-	if (_g_depth)
-		_backend->image_free(_g_depth);
-	if (_g_ssao_blurred)
-		_backend->image_free(_g_ssao_blurred);
-
-	ImageCreateInfo img_info = {
-		.size = size,
-		.usage = IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_TRANSFER_SRC_BIT |
-				IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_STORAGE_BIT | IMAGE_USAGE_SAMPLED_BIT,
-		.mipmapped = false,
-		.samples = 1,
-	};
-
-	// Init G-Buffers
-	img_info.format = DataFormat::R16G16B16A16_SFLOAT;
-	_g_position = _backend->image_create(img_info).value();
-
-	img_info.format = DataFormat::R16G16B16A16_SFLOAT;
-	_g_normal = _backend->image_create(img_info).value();
-
-	img_info.format = DataFormat::R8G8B8A8_UNORM;
-	_g_albedo = _backend->image_create(img_info).value();
-
-	img_info.format = DataFormat::R8_UNORM;
-	_g_ssao_blurred = _backend->image_create(img_info).value();
-
-	img_info.format = DataFormat::D32_SFLOAT;
-	img_info.usage = IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_STORAGE_BIT;
-	_g_depth = _backend->image_create(img_info).value();
-}
-
-Mat4 RenderingSystem::_get_camera_viewproj(Registry& registry, Image target_image) {
-	const Vec3u size = _backend->image_get_size(target_image).value();
-
-	float aspect_ratio = 1.0f;
-	if (size.x > 0 && size.y > 0) {
-		aspect_ratio = (float)size.x / size.y;
-	}
-
-	Mat4 viewproj = Mat4(1.0f);
+RenderingSystem::CameraData RenderingSystem::_get_main_camera_data(
+		Registry& registry, float aspect_ratio) {
+	CameraData cam_data = {};
 	for (Entity entity : registry.view<Transform, CameraComponent>()) {
 		auto [transform, cc] = registry.get_many<Transform, CameraComponent>(entity);
 
@@ -198,41 +101,99 @@ Mat4 RenderingSystem::_get_camera_viewproj(Registry& registry, Image target_imag
 			continue;
 		}
 
+		cam_data.pos = transform->position;
+
 		switch (cc->projection) {
 			case CameraProjection::ORTHOGRAPHIC:
 				cc->ortho.aspect_ratio = aspect_ratio;
-				viewproj =
-						cc->ortho.get_projection_matrix() * cc->ortho.get_view_matrix(*transform);
+				cam_data.proj = cc->ortho.get_projection_matrix();
+				cam_data.view = cc->ortho.get_view_matrix(*transform);
 				break;
 			case CameraProjection::PERSPECTIVE:
 				cc->persp.aspect_ratio = aspect_ratio;
-				viewproj =
-						cc->persp.get_projection_matrix() * cc->persp.get_view_matrix(*transform);
+				cam_data.proj = cc->persp.get_projection_matrix();
+				cam_data.view = cc->persp.get_view_matrix(*transform);
 				break;
 		}
 
 		break;
 	}
 
-	return viewproj;
+	cam_data.frustum = Frustum::from_view_proj(cam_data.proj * cam_data.view);
+
+	return cam_data;
 }
 
-void RenderingSystem::_init_scene_resources() {
-	// Init scene buffer
-	_scene_buffer =
-			_backend->buffer_create(sizeof(SceneData),
-							BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
-									BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-							MemoryAllocationType::CPU)
-					.value();
-	_scene_buffer_addr = _backend->buffer_get_device_address(_scene_buffer).value();
+RenderQueue RenderingSystem::_extract_render_queue(
+		Registry& registry, const Frustum& frustum, Mat4 viewproj) {
+	RenderQueue queue;
+	queue.viewproj = viewproj;
+
+	// Temporary map to batch by Mesh
+	std::unordered_map<std::shared_ptr<StaticMesh>, std::vector<QueueInstance>> batch_map;
+
+	for (auto entity : registry.view<Transform, MeshComponent>()) {
+		auto [transform, mesh_comp] = registry.get_many<Transform, MeshComponent>(entity);
+
+		// Resolve Mesh
+		std::shared_ptr<StaticMesh> mesh = _resolve_mesh(mesh_comp->type);
+		if (!mesh) {
+			continue;
+		}
+
+		// Culling
+		const Mat4 model = transform->to_mat4();
+		if (!mesh->aabb.transform(model).is_inside_frustum(frustum)) {
+			continue;
+		}
+
+		// Material Packing
+		// We add the material to the linear list and get its index
+		const uint32_t mat_index = (uint32_t)queue.materials.size();
+
+		{
+			QueueMaterial q_mat = {};
+
+			// Resolve material component if any
+			if (MaterialComponent* mat_comp = registry.get<MaterialComponent>(entity)) {
+				q_mat.base_color = mat_comp->base_color;
+
+				// Resolve texture asset
+				if (auto mat_texture = registry.get_asset_manager().get<Texture>(
+							mat_comp->diffuse_tex_id)) {
+					q_mat.albedo_map = mat_texture;
+				}
+			}
+
+			if (!q_mat.albedo_map) {
+				q_mat.albedo_map = _white_texture;
+			}
+
+			queue.materials.push_back(q_mat);
+		}
+
+		// Add Instance
+		batch_map[mesh].push_back({ model, mat_index });
+	}
+
+	// Flatten Map to Vector
+	for (auto& [mesh, instances] : batch_map) {
+		queue.opaque_batches.push_back({ mesh, std::move(instances) });
+	}
+
+	return queue;
 }
 
-void RenderingSystem::_update_scene_resources(const Mat4& viewproj) {
-	SceneData* data = (SceneData*)_backend->buffer_map(_scene_buffer).value();
-	if (data) {
-		data->viewproj = viewproj;
-		_backend->buffer_unmap(_scene_buffer);
+std::shared_ptr<StaticMesh> RenderingSystem::_resolve_mesh(PrimitiveType type) {
+	switch (type) {
+		case PrimitiveType::CUBE:
+			return _primitives.cube;
+		case PrimitiveType::PLANE:
+			return _primitives.plane;
+		case PrimitiveType::SPHERE:
+			return _primitives.sphere;
+		default:
+			return nullptr;
 	}
 }
 

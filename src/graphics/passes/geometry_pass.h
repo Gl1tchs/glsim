@@ -1,28 +1,35 @@
 #pragma once
 
-#include "core/components.h"
 #include "graphics/graphics_pipeline.h"
-#include "graphics/mesh.h"
 #include "graphics/render_pass.h"
-#include "graphics/texture.h"
 
 namespace gl {
 
+/**
+ * Forward+ Pass responsible for rendering G-Buffers
+ * Index: 0
+ */
 class GeometryPass : public IRenderPass {
 public:
+	GeometryPass(std::shared_ptr<RenderBackend> backend);
 	virtual ~GeometryPass();
 
-	void init(std::shared_ptr<RenderBackend> backend, RenderPassResources& res) override;
-	void execute(const FrameContext& ctx, Registry& registry, RenderPassResources& res) override;
-
-private:
-	void _update_material_buffers(Registry& registry);
-
-	std::shared_ptr<StaticMesh> _resolve_mesh(PrimitiveType type);
+	void setup(RenderGraph& graph) override;
+	void execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue& queue) override;
 
 private:
 	std::shared_ptr<RenderBackend> _backend;
-	std::shared_ptr<GraphicsPipeline> _pipeline; // unlit pipeline
+	std::shared_ptr<GraphicsPipeline> _pipeline;
+
+	// Graph Handles
+	VImageHandle _g_position;
+	VImageHandle _g_normal;
+	VImageHandle _g_albedo;
+	VImageHandle _g_depth;
+
+	// GPU Resources
+	Buffer _scene_buffer;
+	BufferDeviceAddress _scene_buffer_addr;
 
 	Buffer _instance_buffer;
 	BufferDeviceAddress _instance_buffer_addr;
@@ -31,16 +38,6 @@ private:
 	BufferDeviceAddress _material_buffer_addr;
 
 	UniformSet _bindless_textures;
-
-	std::unordered_map<Entity, size_t> _entity_material_map;
-
-	std::shared_ptr<Texture> _white_texture;
-
-	struct {
-		std::shared_ptr<StaticMesh> cube;
-		std::shared_ptr<StaticMesh> plane;
-		std::shared_ptr<StaticMesh> sphere;
-	} _primitives;
 };
 
 } //namespace gl

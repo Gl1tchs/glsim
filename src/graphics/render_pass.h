@@ -1,44 +1,65 @@
 #pragma once
 
-#include "core/registry.h"
-#include "glgpu/backend.h"
+#include "glgpu/matrix.h"
 #include "glgpu/types.h"
-#include "graphics/aabb.h"
+#include "graphics/mesh.h"
+#include "graphics/texture.h"
 
 namespace gl {
 
-struct FrameContext {
-	CommandBuffer cmd;
-	float dt;
-	Frustum frustum;
-	Mat4 viewproj;
-	Image swapchain_image;
+struct VHandle {
+	uint32_t id = 0xFFFFFFFF;
+
+	constexpr bool is_valid() const { return id != 0xFFFFFFFF; }
+
+	constexpr bool operator==(const VHandle& other) const { return id == other.id; }
 };
 
-struct RenderPassResources {
-	// G-Buffers
-	Image g_position; // R16G16B16A16_SFLOAT
-	Image g_normal; // R16G16B16A16_SFLOAT
-	Image g_albedo; // R8G8B8A8_UNORM
-	Image g_depth; // D32_SFLOAT
+typedef VHandle VImageHandle;
 
-	Image g_ssao; // R8_UNORM
+class RenderGraph;
 
-	// Scene data
-	BufferDeviceAddress scene_buffer_addr;
+struct QueueInstance {
+	Mat4 transform;
+	uint32_t material_index;
+};
 
-	// Misc
-	DataFormat swapchain_format;
+struct QueueBatch {
+	std::shared_ptr<StaticMesh> mesh;
+	std::vector<QueueInstance> instances;
+};
+
+struct QueueMaterial {
+	Color base_color = COLOR_WHITE;
+	std::shared_ptr<Texture> albedo_map = nullptr;
+};
+
+struct RenderQueue {
+	// Scene Globals
+	Mat4 viewproj;
+	Vec3f camera_pos;
+
+	// Drawing Lists
+	std::vector<QueueBatch> opaque_batches;
+
+	// Resources to upload
+	std::vector<QueueMaterial> materials;
 };
 
 class IRenderPass {
 public:
 	virtual ~IRenderPass() = default;
 
-	virtual void init(std::shared_ptr<RenderBackend> backend, RenderPassResources& res) = 0;
-	virtual void execute(const FrameContext& ctx, Registry& registry, RenderPassResources& res) = 0;
+	virtual void setup(RenderGraph& graph) = 0;
+	virtual void execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue& queue) = 0;
 
-	virtual void on_resize(const Vec2u& size, RenderPassResources& res) {};
+	virtual void on_resize(RenderGraph& graph, const Vec2u& size) {}
 };
 
 } //namespace gl
+
+namespace std {
+template <> struct hash<gl::VHandle> {
+	size_t operator()(const gl::VHandle& handle) const { return handle.id; }
+};
+} //namespace std
