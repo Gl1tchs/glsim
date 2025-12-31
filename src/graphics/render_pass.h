@@ -7,15 +7,7 @@
 
 namespace gl {
 
-struct VHandle {
-	uint32_t id = 0xFFFFFFFF;
-
-	constexpr bool is_valid() const { return id != 0xFFFFFFFF; }
-
-	constexpr bool operator==(const VHandle& other) const { return id == other.id; }
-};
-
-typedef VHandle VImageHandle;
+typedef size_t VImageHandle;
 
 class RenderGraph;
 
@@ -39,6 +31,10 @@ struct RenderQueue {
 	Mat4 viewproj;
 	Vec3f camera_pos;
 
+	// Settings
+	Color clear_color;
+	// uint32_t msaa_samples;
+
 	// Drawing Lists
 	std::vector<QueueBatch> opaque_batches;
 
@@ -57,9 +53,3 @@ public:
 };
 
 } //namespace gl
-
-namespace std {
-template <> struct hash<gl::VHandle> {
-	size_t operator()(const gl::VHandle& handle) const { return handle.id; }
-};
-} //namespace std

@@ -6,10 +6,13 @@
 
 namespace gl {
 
-RenderGraph::RenderGraph(std::shared_ptr<RenderBackend> backend) : _backend(backend) {}
+RenderGraph::RenderGraph(std::shared_ptr<RenderBackend> backend) : _backend(backend) {
+	// Reserve index 0 as invalid so handles starting at 1 are valid indices
+	_resources.emplace_back();
+}
 
 RenderGraph::~RenderGraph() {
-	for (auto& [handle, node] : _resources) {
+	for (auto& node : _resources) {
 		if (node.is_external || node.image_handle == GL_NULL_HANDLE) {
 			continue;
 		}
@@ -20,51 +23,40 @@ RenderGraph::~RenderGraph() {
 }
 
 VImageHandle RenderGraph::declare_image(const std::string& name, RenderPassImageDef def) {
-	uint32_t id = _get_or_create_resource_id(name);
+	size_t handle = _get_or_create_resource_handle(name);
 
-	ResourceNode& node = _resources[id];
+	ResourceNode& node = _resources[handle];
 
 	// Resource was already declared by another pass
 	if (node.format != DataFormat::UNDEFINED || node.is_external) {
-		return { id };
+		return handle;
 	}
 
 	node.format = def.format;
 	node.size = def.size;
-#ifdef GL_DEBUG_BUILD
-	node.debug_name = name;
-#endif
 
-	return { id };
+	return handle;
 }
 
 VImageHandle RenderGraph::import_image(const std::string& name, Image physical_handle) {
-	uint32_t id = _get_or_create_resource_id(name);
+	size_t handle = _get_or_create_resource_handle(name);
 
-	ResourceNode& node = _resources[id];
+	ResourceNode& node = _resources[handle];
 	node.format = _backend->image_get_format(physical_handle).value();
 	node.size = _backend->image_get_size(physical_handle).value();
 	node.current_usage = _backend->image_get_image_usage(physical_handle).value();
 	node.image_handle = physical_handle;
 	node.is_external = true;
-#ifdef GL_DEBUG_BUILD
-	node.debug_name = name;
-#endif
 
-	return { id };
+	return handle;
 }
 
 void RenderGraph::set_render_target(VImageHandle handle) {
-	if (!_current_setup_pass) {
+	if (!_current_setup_pass || handle >= _resources.size()) {
 		return;
 	}
 
-	const auto it = _resources.find(handle.id);
-	if (it == _resources.end()) {
-		return;
-	}
-
-	const ResourceNode& node = it->second;
+	const ResourceNode& node = _resources[handle];
 
 	auto& info = _current_setup_pass->image_infos[handle];
 	info.usage = IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -78,16 +70,11 @@ void RenderGraph::set_render_target(VImageHandle handle) {
 }
 
 void RenderGraph::set_sampled(VImageHandle handle) {
-	if (!_current_setup_pass) {
+	if (!_current_setup_pass || handle >= _resources.size()) {
 		return;
 	}
 
-	const auto it = _resources.find(handle.id);
-	if (it == _resources.end()) {
-		return;
-	}
-
-	const ResourceNode& node = it->second;
+	const ResourceNode& node = _resources[handle];
 
 	auto& info = _current_setup_pass->image_infos[handle];
 	info.usage = IMAGE_USAGE_SAMPLED_BIT;
@@ -99,12 +86,7 @@ void RenderGraph::set_sampled(VImageHandle handle) {
 }
 
 void RenderGraph::set_storage_write(VImageHandle handle) {
-	if (!_current_setup_pass) {
-		return;
-	}
-
-	const auto it = _resources.find(handle.id);
-	if (it == _resources.end()) {
+	if (!_current_setup_pass || handle >= _resources.size()) {
 		return;
 	}
 
@@ -113,10 +95,9 @@ void RenderGraph::set_storage_write(VImageHandle handle) {
 	info.usage = IMAGE_USAGE_STORAGE_BIT | IMAGE_USAGE_SAMPLED_BIT;
 }
 
-void RenderGraph::compile(const RenderContext& ctx) {
-	const bool target_resized = (ctx.backbuffer_size.x != _last_ctx.backbuffer_size.x ||
-			ctx.backbuffer_size.y != _last_ctx.backbuffer_size.y);
-	_last_ctx = ctx;
+void RenderGraph::compile(const Vec2u& size) {
+	const bool target_resized = (size.x != _last_size.x || size.y != _last_size.y);
+	_last_size = size;
 
 	// Setup phase
 	for (auto& pass_node : _passes) {
@@ -130,18 +111,20 @@ void RenderGraph::compile(const RenderContext& ctx) {
 	std::unordered_map<uint32_t, ImageUsageFlags> global_usage;
 	for (const auto& pass_node : _passes) {
 		for (const auto& [handle, info] : pass_node.image_infos) {
-			global_usage[handle.id] |= info.usage;
+			global_usage[handle] |= info.usage;
 		}
 	}
 
 	// Lazy resource phase
-	for (auto& [id, node] : _resources) {
+	for (size_t i = 1; i < _resources.size(); ++i) { // skip index 0
+		ResourceNode& node = _resources[i];
+
 		if (node.is_external)
 			continue;
 
 		// info.size == 0: screen relative, else fixed
-		Vec2u intended_size = (node.size == Vec2u::zero()) ? ctx.backbuffer_size : node.size;
-		ImageUsageFlags needed_usage = global_usage[id];
+		Vec2u intended_size = (node.size == Vec2u::zero()) ? size : node.size;
+		ImageUsageFlags needed_usage = global_usage[i];
 
 		// Check for resize or usage change
 		bool needs_recreate = false;
@@ -191,7 +174,7 @@ void RenderGraph::compile(const RenderContext& ctx) {
 	if (target_resized) {
 		// Invoke resize events on render passes
 		for (const auto& pass_node : _passes) {
-			pass_node.pass->on_resize(*this, ctx.backbuffer_size);
+			pass_node.pass->on_resize(*this, size);
 		}
 	}
 }
@@ -209,26 +192,22 @@ void RenderGraph::execute(CommandBuffer cmd, const RenderQueue& queue) {
 }
 
 Image RenderGraph::get_image(VImageHandle handle) const {
-	const auto it = _resources.find(handle.id);
-	if (it == _resources.end()) {
+	if (handle == 0 || handle >= _resources.size()) {
 		return GL_NULL_HANDLE;
 	}
-
-	return it->second.image_handle;
+	return _resources[handle].image_handle;
 }
 
 bool RenderGraph::transition_image(CommandBuffer cmd, VImageHandle handle, ImageLayout new_layout) {
-	auto it = _resources.find(handle.id);
-	if (it == _resources.end()) {
+	if (handle == 0 || handle >= _resources.size()) {
 		return false;
 	}
 
-	ResourceNode& node = it->second;
+	ResourceNode& node = _resources[handle];
 	if (node.image_handle == GL_NULL_HANDLE) {
 		return false;
 	}
 
-	// Transition image layout and save it
 	const Res<> result = _backend->command_transition_image(
 			cmd, node.image_handle, node.current_layout, new_layout);
 	if (result.is_ok()) {
@@ -238,18 +217,21 @@ bool RenderGraph::transition_image(CommandBuffer cmd, VImageHandle handle, Image
 	return (bool)result;
 }
 
-uint32_t RenderGraph::_get_or_create_resource_id(const std::string& name) {
-	auto it = _resource_names.find(name);
-	if (it != _resource_names.end()) {
-		return it->second;
+size_t RenderGraph::_get_or_create_resource_handle(const std::string& name) {
+	// linear search and skip index 0
+	for (size_t i = 1; i < _resources.size(); ++i) {
+		if (_resources[i].name == name) {
+			return i;
+		}
 	}
 
-	static uint32_t s_id_counter = 1;
+	// Create new
+	ResourceNode node = {};
+	node.name = name;
+	node.format = DataFormat::UNDEFINED;
+	_resources.push_back(node);
 
-	const uint32_t id = s_id_counter++;
-	_resource_names[name] = id;
-
-	return id;
+	return _resources.size() - 1;
 }
 
 } //namespace gl

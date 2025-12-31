@@ -159,6 +159,7 @@ void GeometryPass::execute(CommandBuffer cmd, RenderGraph& graph, const RenderQu
 		_backend->buffer_unmap(_instance_buffer);
 	}
 
+	// Retrieve G-Buffer resources
 	Image g_position = graph.get_image(_g_position);
 	Image g_normal = graph.get_image(_g_normal);
 	Image g_albedo = graph.get_image(_g_albedo);

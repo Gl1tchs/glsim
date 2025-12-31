@@ -69,15 +69,12 @@ void RenderingSystem::on_update(Registry& registry, float dt) {
 	// Construct render queue
 	RenderQueue queue = _extract_render_queue(registry, cam_frustum, cam_proj * cam_view);
 	queue.camera_pos = cam_pos;
+	queue.clear_color = Color(0.52, 0.8, 0.92);
 
 	// Compile and execute render graph
-	VHandle backbuffer_handle = _render_graph.import_image("Backbuffer", backbuffer);
+	VImageHandle backbuffer_handle = _render_graph.import_image("Backbuffer", backbuffer);
 
-	RenderContext ctx = {};
-	ctx.backbuffer_size = _window->get_size();
-	ctx.backbuffer_format = _swapchain_format;
-
-	_render_graph.compile(ctx);
+	_render_graph.compile(_window->get_size());
 
 	CommandBuffer cmd = _renderer->begin_frame(backbuffer);
 	{

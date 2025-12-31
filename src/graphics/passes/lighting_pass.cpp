@@ -57,7 +57,7 @@ void LightingPass::execute(CommandBuffer cmd, RenderGraph& graph, const RenderQu
 	attachment.image = target;
 	attachment.load_op = AttachmentLoadOp::CLEAR;
 	attachment.store_op = AttachmentStoreOp::STORE;
-	attachment.clear_color = Color(0.52, 0.8, 0.92);
+	attachment.clear_color = queue.clear_color;
 
 	Vec2u target_size = _backend->image_get_size(target).value();
 
