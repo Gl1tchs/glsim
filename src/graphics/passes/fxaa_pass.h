@@ -1,19 +1,14 @@
 #pragma once
 
-#include "graphics/graphics_pipeline.h"
 #include "graphics/render_graph.h"
 #include "graphics/render_pass.h"
 
 namespace gl {
 
-/**
- * Deferred Lighting Pass
- * Renders full screen quad, combining G-Buffers + SSAO
- */
-class LightingPass : public IRenderPass {
+class FXAAPass : public IRenderPass {
 public:
-	LightingPass(std::shared_ptr<RenderBackend> backend);
-	virtual ~LightingPass();
+	FXAAPass(std::shared_ptr<RenderBackend> backend);
+	virtual ~FXAAPass();
 
 	void setup(RenderGraph& graph) override;
 	void execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue& queue) override;
@@ -26,14 +21,13 @@ private:
 private:
 	std::shared_ptr<RenderBackend> _backend;
 
-	VImageHandle _g_albedo;
-	VImageHandle _g_normal;
-	VImageHandle _g_ssao;
 	VImageHandle _scene_color_hdr;
+	VImageHandle _final_color_ldr;
 
-	std::shared_ptr<GraphicsPipeline> _pipeline;
+	Pipeline _pipeline;
+	Shader _shader;
 	Sampler _sampler;
-	UniformSet _lighting_set = GL_NULL_HANDLE;
+	UniformSet _fxaa_set = GL_NULL_HANDLE;
 };
 
 } //namespace gl

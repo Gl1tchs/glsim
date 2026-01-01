@@ -1,11 +1,11 @@
 #include "graphics/passes/lighting_pass.h"
 
+#include "glgpu/types.h"
 #include "graphics/render_graph.h"
 
 namespace gl {
 
-LightingPass::LightingPass(std::shared_ptr<RenderBackend> backend, DataFormat backbuffer_format) :
-		_backend(backend) {
+LightingPass::LightingPass(std::shared_ptr<RenderBackend> backend) : _backend(backend) {
 	// Create Sampler
 	_sampler = _backend->sampler_create({ .min_filter = ImageFiltering::NEAREST,
 												.mag_filter = ImageFiltering::NEAREST })
@@ -13,10 +13,10 @@ LightingPass::LightingPass(std::shared_ptr<RenderBackend> backend, DataFormat ba
 
 	// Create Pipeline
 	const GraphicsPipelineCreateInfo create_info = {
-		.color_attachments = { backbuffer_format },
+		.color_attachments = { DataFormat::R16G16B16A16_SFLOAT },
 		.enable_depth_testing = false,
-		.vertex_shader = "src/lighting/fullscreen.vert.spv",
-		.fragment_shader = "src/lighting/deferred_lighting.frag.spv",
+		.vertex_shader = "display/fullscreen.vert.spv",
+		.fragment_shader = "lighting/deferred_lighting.frag.spv",
 	};
 	_pipeline = GraphicsPipeline::create(_backend, create_info);
 }
@@ -33,25 +33,22 @@ void LightingPass::setup(RenderGraph& graph) {
 	_g_ssao = graph.declare_image("SSAO_Blur");
 
 	// Output
-	// RenderingSystem imports the physical image every frame before compile.
-	_backbuffer = graph.declare_image("Backbuffer");
+	_scene_color_hdr = graph.declare_image("Scene_Color_HDR", { DataFormat::R16G16B16A16_SFLOAT });
 
 	// Usage
 	graph.set_sampled(_g_albedo);
 	graph.set_sampled(_g_normal);
 	graph.set_sampled(_g_ssao);
-	graph.set_render_target(_backbuffer);
+	graph.set_render_target(_scene_color_hdr);
 }
 
 void LightingPass::execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue& queue) {
-	Image target = graph.get_image(_backbuffer);
-	if (!target) {
-		return;
-	}
-
+	// Create if not exists
 	if (!_lighting_set) {
 		_update_descriptor_set(graph);
 	}
+
+	Image target = graph.get_image(_scene_color_hdr);
 
 	RenderingAttachment attachment = {};
 	attachment.image = target;

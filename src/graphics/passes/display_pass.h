@@ -6,14 +6,10 @@
 
 namespace gl {
 
-/**
- * Deferred Lighting Pass
- * Renders full screen quad, combining G-Buffers + SSAO
- */
-class LightingPass : public IRenderPass {
+class DisplayPass : public IRenderPass {
 public:
-	LightingPass(std::shared_ptr<RenderBackend> backend);
-	virtual ~LightingPass();
+	DisplayPass(std::shared_ptr<RenderBackend> backend, DataFormat backbuffer_format);
+	virtual ~DisplayPass();
 
 	void setup(RenderGraph& graph) override;
 	void execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue& queue) override;
@@ -26,14 +22,12 @@ private:
 private:
 	std::shared_ptr<RenderBackend> _backend;
 
-	VImageHandle _g_albedo;
-	VImageHandle _g_normal;
-	VImageHandle _g_ssao;
-	VImageHandle _scene_color_hdr;
+	VImageHandle _final_color_ldr;
+	VImageHandle _backbuffer;
 
 	std::shared_ptr<GraphicsPipeline> _pipeline;
 	Sampler _sampler;
-	UniformSet _lighting_set = GL_NULL_HANDLE;
+	UniformSet _display_set = GL_NULL_HANDLE;
 };
 
 } //namespace gl

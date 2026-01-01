@@ -41,8 +41,8 @@ GeometryPass::GeometryPass(std::shared_ptr<RenderBackend> backend) : _backend(ba
         },
         .depth_attachment = DataFormat::D32_SFLOAT, // g_depth
         .enable_depth_testing = true,
-        .vertex_shader = "src/geometry/opaque_geometry.vert.spv",
-        .fragment_shader = "src/geometry/opaque_geometry.frag.spv",
+        .vertex_shader = "geometry/opaque_geometry.vert.spv",
+        .fragment_shader = "geometry/opaque_geometry.frag.spv",
     };
 	_pipeline = GraphicsPipeline::create(_backend, create_info);
 

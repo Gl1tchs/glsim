@@ -1,3 +1,9 @@
+/**
+ * @file opaque_geometry.frag
+ *
+ * Fills GBuffers specifically position, normal and albedo data
+ */
+
 #version 450
 
 #include "geometry/common.glsl"

@@ -7,10 +7,6 @@
 
 namespace gl {
 
-typedef size_t VImageHandle;
-
-class RenderGraph;
-
 struct QueueInstance {
 	Mat4 transform;
 	uint32_t material_index;
@@ -33,7 +29,6 @@ struct RenderQueue {
 
 	// Settings
 	Color clear_color;
-	// uint32_t msaa_samples;
 
 	// Drawing Lists
 	std::vector<QueueBatch> opaque_batches;
@@ -41,6 +36,8 @@ struct RenderQueue {
 	// Resources to upload
 	std::vector<QueueMaterial> materials;
 };
+
+class RenderGraph;
 
 class IRenderPass {
 public:

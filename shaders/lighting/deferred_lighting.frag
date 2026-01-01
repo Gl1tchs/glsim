@@ -1,3 +1,9 @@
+/**
+ * @file deferred_lighting.frag
+ *
+ * Draw light objects on top of albedo pass.
+ */
+
 #version 450
 
 layout(location = 0) in vec2 v_uv;

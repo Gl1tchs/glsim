@@ -3,7 +3,7 @@ include(ShaderUtils)
 # Build shader bundler target
 add_executable(glsim_bundler bundler.cpp)
 
-set(SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR})
 set(BUILD_DIR ${CMAKE_BINARY_DIR}/shaders)
 
 file(GLOB_RECURSE VS_FILES ${SHADERS_DIR}/*.vert)

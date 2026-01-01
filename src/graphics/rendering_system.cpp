@@ -8,6 +8,8 @@
 #include "glgpu/types.h"
 #include "graphics/aabb.h"
 #include "graphics/camera.h"
+#include "graphics/passes/display_pass.h"
+#include "graphics/passes/fxaa_pass.h"
 #include "graphics/primitives.h"
 #include "graphics/render_pass.h"
 #include "graphics/renderer.h"
@@ -33,7 +35,9 @@ RenderingSystem::RenderingSystem(GpuContext& ctx, std::shared_ptr<Window> window
 	// Add render passes
 	_render_graph.add_pass<GeometryPass>(_backend);
 	_render_graph.add_pass<SSAOPass>(_backend);
-	_render_graph.add_pass<LightingPass>(_backend, _window->get_swapchain_format());
+	_render_graph.add_pass<LightingPass>(_backend);
+	_render_graph.add_pass<FXAAPass>(_backend);
+	_render_graph.add_pass<DisplayPass>(_backend, _window->get_swapchain_format());
 }
 
 RenderingSystem::~RenderingSystem() { _backend->device_wait(); }

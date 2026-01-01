@@ -1,0 +1,187 @@
+/**
+ * @file fxaa.frag
+ *
+ * Apply FXAA (Fast Approximate Anti Aliasing) to the scene color
+ * image produced from deferred pass.
+ */
+
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) uniform sampler2D u_scene_color_hdr;
+
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D u_final_color_ldr;
+
+layout(push_constant) uniform Constants {
+    vec2 inverse_screen_size;
+    float fixed_threshold; // 0.0312 to 0.0833 (Trims dark/low contrast)
+    float relative_threshold; // 0.063 to 0.166 (Minimum required contrast)
+    float subpixel_quality; // 0.0 to 1.0 (0.0 = sharp/jagged, 1.0 = softer/cleaner)
+} u_pc;
+
+#define ITERATIONS 12
+#define SUBPIXEL_QUALITY 0.75
+
+// Quality steps for the edge search
+const float QUALITY[12] = float[](1.0, 1.0, 1.0, 1.0, 1.0, 1.5, 2.0, 2.0, 2.0, 2.0, 4.0, 8.0);
+
+float get_luma(vec3 rgb) {
+    // Standard Rec. 601 luma (perceptual brightness)
+    return dot(rgb, vec3(0.299, 0.587, 0.114));
+}
+
+void main() {
+    ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 img_size = imageSize(u_final_color_ldr);
+
+    // Boundary check
+    if (pixel_coords.x >= img_size.x || pixel_coords.y >= img_size.y) {
+        return;
+    }
+
+    vec2 uv = (vec2(pixel_coords) + 0.5) * u_pc.inverse_screen_size;
+
+    // Load Local Neighborhood
+    vec3 color_center = textureLod(u_scene_color_hdr, uv, 0.0).rgb;
+
+    // Luma at the center
+    float luma_center = get_luma(color_center);
+
+    // Luma at the 4 direct neighbors
+    float luma_down = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(0, -1)).rgb);
+    float luma_up = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(0, 1)).rgb);
+    float luma_left = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(-1, 0)).rgb);
+    float luma_right = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(1, 0)).rgb);
+
+    // Find min and max luma to determine local contrast
+    float luma_min = min(luma_center, min(min(luma_down, luma_up), min(luma_left, luma_right)));
+    float luma_max = max(luma_center, max(max(luma_down, luma_up), max(luma_left, luma_right)));
+    float luma_range = luma_max - luma_min;
+
+    // If the contrast is lower than the absolute threshold or the relative threshold, skip AA.
+    if (luma_range < max(u_pc.fixed_threshold, luma_max * u_pc.relative_threshold)) {
+        imageStore(u_final_color_ldr, pixel_coords, vec4(color_center, 1.0));
+        return;
+    }
+
+    // Edge Direction Detection
+    // Get the corners for fuller context
+    float luma_down_left = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(-1, -1)).rgb);
+    float luma_up_right = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(1, 1)).rgb);
+    float luma_up_left = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(-1, 1)).rgb);
+    float luma_down_right = get_luma(textureLodOffset(u_scene_color_hdr, uv, 0.0, ivec2(1, -1)).rgb);
+
+    // Calculate gradients
+    float luma_down_up = luma_down + luma_up;
+    float luma_left_right = luma_left + luma_right;
+
+    float luma_left_corners = luma_down_left + luma_up_left;
+    float luma_down_corners = luma_down_left + luma_down_right;
+    float luma_right_corners = luma_down_right + luma_up_right;
+    float luma_up_corners = luma_up_right + luma_up_left;
+
+    float edge_horizontal = abs(-2.0 * luma_left + luma_left_corners) +
+            abs(-2.0 * luma_center + luma_down_up) * 2.0 +
+            abs(-2.0 * luma_right + luma_right_corners);
+
+    float edge_vertical = abs(-2.0 * luma_up + luma_up_corners) +
+            abs(-2.0 * luma_center + luma_left_right) * 2.0 +
+            abs(-2.0 * luma_down + luma_down_corners);
+
+    bool is_horizontal = (edge_horizontal >= edge_vertical);
+
+    // Select Edge Geometry
+    float luma_1 = is_horizontal ? luma_down : luma_left;
+    float luma_2 = is_horizontal ? luma_up : luma_right;
+
+    float gradient_1 = luma_1 - luma_center;
+    float gradient_2 = luma_2 - luma_center;
+
+    bool is_1_steepest = abs(gradient_1) >= abs(gradient_2);
+    float gradient_scaled = 0.25 * max(abs(gradient_1), abs(gradient_2));
+
+    float step_length = is_horizontal ? u_pc.inverse_screen_size.y : u_pc.inverse_screen_size.x;
+    float luma_local_average = 0.0;
+
+    if (is_1_steepest) {
+        step_length = -step_length;
+        luma_local_average = 0.5 * (luma_1 + luma_center);
+    } else {
+        luma_local_average = 0.5 * (luma_2 + luma_center);
+    }
+
+    vec2 current_uv = uv;
+    if (is_horizontal) {
+        current_uv.y += step_length * 0.5;
+    } else {
+        current_uv.x += step_length * 0.5;
+    }
+
+    // Iterative Search (Edge Walking)
+    vec2 offset = is_horizontal ? vec2(u_pc.inverse_screen_size.x, 0.0) : vec2(0.0, u_pc.inverse_screen_size.y);
+    vec2 uv_1 = current_uv - offset;
+    vec2 uv_2 = current_uv + offset;
+
+    float luma_end_1, luma_end_2;
+    bool reached_1 = false;
+    bool reached_2 = false;
+    bool reached_both = false;
+
+    // Search Loop
+    for (int i = 0; i < ITERATIONS; i++) {
+        if (!reached_1) {
+            luma_end_1 = get_luma(textureLod(u_scene_color_hdr, uv_1, 0.0).rgb);
+            luma_end_1 = luma_end_1 - luma_local_average;
+        }
+        if (!reached_2) {
+            luma_end_2 = get_luma(textureLod(u_scene_color_hdr, uv_2, 0.0).rgb);
+            luma_end_2 = luma_end_2 - luma_local_average;
+        }
+
+        reached_1 = abs(luma_end_1) >= gradient_scaled;
+        reached_2 = abs(luma_end_2) >= gradient_scaled;
+        reached_both = reached_1 && reached_2;
+
+        if (!reached_1) uv_1 -= offset * QUALITY[i];
+        if (!reached_2) uv_2 += offset * QUALITY[i];
+
+        if (reached_both) break;
+    }
+
+    // Calculate Blur Amount
+    float distance_1 = is_horizontal ? (uv.x - uv_1.x) : (uv.y - uv_1.y);
+    float distance_2 = is_horizontal ? (uv_2.x - uv.x) : (uv_2.y - uv.y);
+
+    bool is_direction_1 = distance_1 < distance_2;
+    float distance_final = min(distance_1, distance_2);
+    float edge_thickness = (distance_1 + distance_2);
+
+    float pixel_offset = -distance_final / edge_thickness + 0.5;
+
+    // Check if the luma at the end of the edge has the opposite sign
+    // This prevents blending if we didn't actually find the edge end correctly
+    bool is_luma_center_smaller = luma_center < luma_local_average;
+    bool correct_variation = ((is_direction_1 ? luma_end_1 : luma_end_2) < 0.0) != is_luma_center_smaller;
+    float final_offset = correct_variation ? pixel_offset : 0.0;
+
+    // Sub-pixel Anti-aliasing
+    // Reduces flicker on single-pixel dots
+    float luma_average = (1.0 / 12.0) * (2.0 * (luma_down_up + luma_left_right) + luma_left_corners + luma_right_corners);
+    float sub_pixel_offset_1 = clamp(abs(luma_average - luma_center) / luma_range, 0.0, 1.0);
+    float sub_pixel_offset_2 = (-2.0 * sub_pixel_offset_1 + 3.0) * sub_pixel_offset_1 * sub_pixel_offset_1;
+    float sub_pixel_final_offset = sub_pixel_offset_2 * sub_pixel_offset_2 * SUBPIXEL_QUALITY;
+
+    final_offset = max(final_offset, sub_pixel_final_offset);
+
+    // Final Read
+    vec2 final_uv = uv;
+    if (is_horizontal) {
+        final_uv.y += final_offset * step_length;
+    } else {
+        final_uv.x += final_offset * step_length;
+    }
+
+    vec3 final_color = textureLod(u_scene_color_hdr, final_uv, 0.0).rgb;
+    imageStore(u_final_color_ldr, pixel_coords, vec4(final_color, 1.0));
+}

@@ -1,13 +1,13 @@
 #pragma once
 
 #include "graphics/graphics_pipeline.h"
+#include "graphics/render_graph.h"
 #include "graphics/render_pass.h"
 
 namespace gl {
 
 /**
  * Forward+ Pass responsible for rendering G-Buffers
- * Index: 0
  */
 class GeometryPass : public IRenderPass {
 public:

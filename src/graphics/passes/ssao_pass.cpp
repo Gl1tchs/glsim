@@ -78,6 +78,7 @@ void SSAOPass::setup(RenderGraph& graph) {
 }
 
 void SSAOPass::execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue& queue) {
+	// Update SSAO data
 	{
 		SSAOData* data = (SSAOData*)_backend->buffer_map(_ssao_params_buffer).value();
 		if (data) {
@@ -87,14 +88,12 @@ void SSAOPass::execute(CommandBuffer cmd, RenderGraph& graph, const RenderQueue&
 		}
 	}
 
-	// Resolve Physical Resources
-	Image raw_img = graph.get_image(_ssao_raw);
-
 	// Ensure descriptors are valid (create if first run)
 	if (!_ssao_set) {
 		_update_descriptor_sets(graph);
 	}
 
+	Image raw_img = graph.get_image(_ssao_raw);
 	Vec2u size = _backend->image_get_size(raw_img).value();
 	Vec3u groups = { (size.x + 15) / 16, (size.y + 15) / 16, 1 };
 
@@ -153,13 +152,13 @@ void SSAOPass::_update_descriptor_sets(RenderGraph& graph) {
 }
 
 void SSAOPass::_create_pipelines() {
-	auto ssao_code = shader_library::get_spirv_data("src/ssao/ssao_calc.comp.spv");
+	auto ssao_code = shader_library::get_spirv_data("ssao/ssao_calc.comp.spv");
 	_ssao_shader =
 			_backend->shader_create_from_bytecode({ { ssao_code, SHADER_STAGE_COMPUTE_BIT } })
 					.value();
 	_ssao_pipeline = _backend->compute_pipeline_create(_ssao_shader).value();
 
-	auto blur_code = shader_library::get_spirv_data("src/ssao/ssao_blur.comp.spv");
+	auto blur_code = shader_library::get_spirv_data("ssao/ssao_blur.comp.spv");
 	_blur_shader =
 			_backend->shader_create_from_bytecode({ { blur_code, SHADER_STAGE_COMPUTE_BIT } })
 					.value();

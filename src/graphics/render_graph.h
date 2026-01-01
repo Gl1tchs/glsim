@@ -6,6 +6,8 @@
 
 namespace gl {
 
+typedef size_t VImageHandle;
+
 struct RenderPassImageDef {
 	DataFormat format = DataFormat::UNDEFINED;
 	Vec2u size = Vec2u::zero();

@@ -1,3 +1,10 @@
+/**
+ * @file ssao_calc.comp
+ *
+ * Performs SSAO (Screen Space Ambient Occulusion) and produces single
+ * channel texture for shadowing edges.
+ */
+
 #version 450
 
 layout(local_size_x = 16, local_size_y = 16) in;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/render_graph.h"
 #include "graphics/render_pass.h"
 
 namespace gl {
