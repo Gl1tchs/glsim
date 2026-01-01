@@ -3,6 +3,7 @@
 #include "core/event_system.h"
 #include "core/gpu_context.h"
 #include "core/input.h"
+#include "core/timer.h"
 #include "core/transform.h"
 #include "core/world.h"
 #include "glgpu/color.h"
@@ -63,8 +64,9 @@ int main(int argc, char* argv[]) {
 		rb->use_gravity = false;
 	}
 
+	Timer timer;
 	while (!window->should_close()) {
-		float dt = 1 / 144.0f;
+		timer.tick();
 
 		window->poll_events();
 
@@ -81,6 +83,8 @@ int main(int argc, char* argv[]) {
 		if (Input::is_key_pressed(KeyCode::S)) {
 			player_rb->add_force(-Vec3f::up() * force);
 		}
+
+		float dt = timer.get_delta_time();
 
 		if (Input::is_key_pressed(KeyCode::E)) {
 			player_transform->rotate(30 * dt, Vec3f::up());
